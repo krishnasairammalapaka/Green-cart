@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Dashboard - Greens Cart</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+    <div class="min-h-screen flex">
+        <!-- Sidebar -->
+        <div class="bg-green-600 text-white w-64 py-6 flex flex-col">
+            <div class="px-6 mb-8">
+                <h1 class="text-2xl font-bold">My Account</h1>
+            </div>
+            <nav class="flex-1">
+                <a href="/user/dashboard" class="block px-6 py-2 hover:bg-green-700">Dashboard</a>
+                <a href="/user/orders" class="block px-6 py-2 hover:bg-green-700">My Orders</a>
+                <a href="/user/profile" class="block px-6 py-2 hover:bg-green-700">Profile</a>
+                <a href="/auth/logout" class="block px-6 py-2 hover:bg-green-700">Logout</a>
+            </nav>
+        </div>
+
+        <!-- Main Content -->
+        <div class="flex-1 p-8">
+            <div class="mb-8">
+                <h2 class="text-3xl font-bold text-gray-800">Welcome, <%= user.name %></h2>
+            </div>
+
+            <!-- Recent Orders -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">Recent Orders</h3>
+                <div class="border-t border-gray-200">
+                    <p class="py-4 text-gray-500">No orders found.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html> 

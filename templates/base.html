@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{% endblock %} - Greens Cart</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+    <nav class="bg-green-500 text-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 py-4">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center space-x-8">
+                    <h1 class="text-2xl font-bold">Greens Cart</h1>
+                    <div class="hidden md:flex space-x-4">
+                        <a href="{{ url_for('dashboard') }}" class="hover:text-green-200">Dashboard</a>
+                        <a href="{{ url_for('products') }}" class="hover:text-green-200">Products</a>
+                        <a href="{{ url_for('farmers') }}" class="hover:text-green-200">Local Farmers</a>
+                        {% if session.get('role') == 'farmer' %}
+                        <a href="#" class="hover:text-green-200">My Products</a>
+                        {% endif %}
+                        {% if session.get('role') == 'customer' %}
+                        <a href="#" class="hover:text-green-200">My Orders</a>
+                        {% endif %}
+                    </div>
+                </div>
+                <button onclick="location.href='/'" class="bg-white text-green-500 px-4 py-2 rounded-lg hover:bg-gray-100">
+                    Logout
+                </button>
+            </div>
+        </div>
+    </nav>
+    <main class="max-w-7xl mx-auto p-4 mt-8">
+        {% block content %}{% endblock %}
+    </main>
+</body>
+</html>
