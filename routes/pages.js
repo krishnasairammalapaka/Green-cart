@@ -146,4 +146,32 @@ router.get('/admin/search-land', requireAdmin, async (req, res) => {
     }
 });
 
+// Farmer Information page
+router.get('/admin/farmer-info', requireAdmin, async (req, res) => {
+    try {
+        // Fetch all land information
+        const { data: landData, error } = await supabase
+            .from('farmer_lands')
+            .select('*')
+            .order('farmer_name', { ascending: true });
+
+        if (error) throw error;
+
+        res.render('admin/farmer-info', {
+            title: 'Farmer Information',
+            user: req.session.user,
+            landData: landData || [],
+            error: null
+        });
+    } catch (error) {
+        console.error('Error fetching farmer data:', error);
+        res.render('admin/farmer-info', {
+            title: 'Farmer Information',
+            user: req.session.user,
+            landData: [],
+            error: 'Failed to fetch farmer data'
+        });
+    }
+});
+
 module.exports = router; 
