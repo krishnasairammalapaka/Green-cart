@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Marketplace - Greens Cart</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+    <div class="min-h-screen flex">
+        <!-- Include Sidebar -->
+        <%- include('../partials/user-sidebar', { currentPage: 'marketplace' }) %>
+
+        <!-- Main Content -->
+        <div class="flex-1 p-8">
+            <!-- Categories -->
+            <div class="mb-8">
+                <h2 class="text-2xl font-bold mb-4">Categories</h2>
+                <div class="flex space-x-4">
+                    <button onclick="filterByCategory('all')" class="category-btn active px-4 py-2 rounded-lg bg-green-600 text-white">
+                        All
+                    </button>
+                    <button onclick="filterByCategory('leafy')" class="category-btn px-4 py-2 rounded-lg bg-gray-200">
+                        Leafy Vegetables
+                    </button>
+                    <button onclick="filterByCategory('root')" class="category-btn px-4 py-2 rounded-lg bg-gray-200">
+                        Root Vegetables
+                    </button>
+                    <button onclick="filterByCategory('fruit')" class="category-btn px-4 py-2 rounded-lg bg-gray-200">
+                        Fruit Vegetables
+                    </button>
+                </div>
+            </div>
+
+            <!-- Vegetables Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                <% vegetables.forEach(vegetable => { %>
+                    <div class="vegetable-card bg-white rounded-lg shadow overflow-hidden" data-category="<%= vegetable.category %>">
+                        <img src="<%= vegetable.image_url %>" alt="<%= vegetable.name %>" class="w-full h-48 object-cover">
+                        <div class="p-4">
+                            <h3 class="text-xl font-semibold mb-2"><%= vegetable.name %></h3>
+                            <p class="text-gray-600 mb-2"><%= vegetable.description %></p>
+                            <p class="text-lg font-bold text-green-600">
+                                ₹<%= vegetable.price %>/<%= vegetable.unit %>
+                            </p>
+                            <div class="mt-4 flex items-center justify-between">
+                                <div class="flex items-center space-x-2">
+                                    <button onclick="decrementQuantity('<%= vegetable.id %>')" class="px-2 py-1 bg-gray-200 rounded">-</button>
+                                    <input type="number" id="quantity-<%= vegetable.id %>" value="1" min="1" max="<%= vegetable.stock_quantity %>"
+                                           class="w-16 text-center border rounded">
+                                    <button onclick="incrementQuantity('<%= vegetable.id %>')" class="px-2 py-1 bg-gray-200 rounded">+</button>
+                                </div>
+                                <button onclick="addToCart('<%= vegetable.id %>')" 
+                                        class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
+                                    Add to Cart
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                <% }); %>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function filterByCategory(category) {
+            document.querySelectorAll('.category-btn').forEach(btn => {
+                btn.classList.remove('bg-green-600', 'text-white');
+                btn.classList.add('bg-gray-200');
+            });
+            event.target.classList.remove('bg-gray-200');
+            event.target.classList.add('bg-green-600', 'text-white');
+
+            document.querySelectorAll('.vegetable-card').forEach(card => {
+                if (category === 'all' || card.dataset.category === category) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+
+        function incrementQuantity(id) {
+            const input = document.getElementById(`quantity-${id}`);
+            const max = parseInt(input.max);
+            const currentValue = parseInt(input.value);
+            if (currentValue < max) {
+                input.value = currentValue + 1;
+            }
+        }
+
+        function decrementQuantity(id) {
+            const input = document.getElementById(`quantity-${id}`);
+            const currentValue = parseInt(input.value);
+            if (currentValue > 1) {
+                input.value = currentValue - 1;
+            }
+        }
+
+        async function addToCart(vegetableId) {
+            const quantity = document.getElementById(`quantity-${vegetableId}`).value;
+            try {
+                const response = await fetch('/user/cart/add', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ vegetableId, quantity })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('cartCount').textContent = data.cartCount;
+                    alert('Added to cart successfully!');
+                } else {
+                    alert('Failed to add to cart');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Failed to add to cart');
+            }
+        }
+
+        // Update cart count on page load
+        fetch('/user/cart/count')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('cartCount').textContent = data.count;
+            });
+    </script>
+</body>
+</html> 

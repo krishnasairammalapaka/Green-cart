@@ -8,32 +8,24 @@
 </head>
 <body class="bg-gray-100">
     <div class="min-h-screen flex">
-        <!-- Include Sidebar -->
-        <%- include('./partials/sidebar', { currentPage: 'dashboard' }) %>
+        <!-- Include Admin Sidebar -->
+        <%- include('../partials/admin-sidebar', { currentPage: 'dashboard' }) %>
 
         <!-- Main Content -->
         <div class="flex-1 p-8">
             <div class="mb-8">
-                <h2 class="text-3xl font-bold text-gray-800">Welcome, <%= user.name %></h2>
+                <h2 class="text-3xl font-bold text-gray-800">Admin Dashboard</h2>
             </div>
 
-            <!-- Dashboard Stats -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div class="bg-white rounded-lg shadow p-6">
-                    <h3 class="text-gray-500 text-sm font-medium">Total Users</h3>
-                    <p class="text-3xl font-bold text-gray-800">0</p>
-                </div>
-                <div class="bg-white rounded-lg shadow p-6">
-                    <h3 class="text-gray-500 text-sm font-medium">Total Products</h3>
-                    <p class="text-3xl font-bold text-gray-800">0</p>
-                </div>
-                <div class="bg-white rounded-lg shadow p-6">
-                    <h3 class="text-gray-500 text-sm font-medium">Total Orders</h3>
-                    <p class="text-3xl font-bold text-gray-800">0</p>
-                </div>
-                <div class="bg-white rounded-lg shadow p-6">
-                    <h3 class="text-gray-500 text-sm font-medium">Revenue</h3>
-                    <p class="text-3xl font-bold text-gray-800">$0</p>
+            <!-- Dashboard Content -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h3 class="text-xl font-semibold mb-4">Quick Links</h3>
+                    <div class="space-y-2">
+                        <a href="/admin/vegetables" class="block text-green-600 hover:text-green-700">Manage Vegetables</a>
+                        <a href="/admin/farmer-info" class="block text-green-600 hover:text-green-700">Farmer Information</a>
+                        <a href="/admin/orders" class="block text-green-600 hover:text-green-700">View Orders</a>
+                    </div>
                 </div>
             </div>
         </div>

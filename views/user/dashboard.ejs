@@ -8,18 +8,8 @@
 </head>
 <body class="bg-gray-100">
     <div class="min-h-screen flex">
-        <!-- Sidebar -->
-        <div class="bg-green-600 text-white w-64 py-6 flex flex-col">
-            <div class="px-6 mb-8">
-                <h1 class="text-2xl font-bold">My Account</h1>
-            </div>
-            <nav class="flex-1">
-                <a href="/user/dashboard" class="block px-6 py-2 hover:bg-green-700">Dashboard</a>
-                <a href="/user/orders" class="block px-6 py-2 hover:bg-green-700">My Orders</a>
-                <a href="/user/profile" class="block px-6 py-2 hover:bg-green-700">Profile</a>
-                <a href="/auth/logout" class="block px-6 py-2 hover:bg-green-700">Logout</a>
-            </nav>
-        </div>
+        <!-- Include Sidebar -->
+        <%- include('../partials/user-sidebar', { currentPage: 'dashboard' }) %>
 
         <!-- Main Content -->
         <div class="flex-1 p-8">

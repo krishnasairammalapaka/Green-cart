@@ -1,0 +1,31 @@
+<div class="bg-green-600 text-white w-64 py-6 flex flex-col">
+    <div class="px-6 mb-8">
+        <h1 class="text-2xl font-bold">My Account</h1>
+    </div>
+    <nav class="flex-1">
+        <a href="/user/dashboard" 
+           class="block px-6 py-2 hover:bg-green-700 <%= currentPage === 'dashboard' ? 'bg-green-700' : '' %>">
+            Dashboard
+        </a>
+        <a href="/user/marketplace" 
+           class="block px-6 py-2 hover:bg-green-700 <%= currentPage === 'marketplace' ? 'bg-green-700' : '' %>">
+            Marketplace
+        </a>
+        <a href="/user/orders" 
+           class="block px-6 py-2 hover:bg-green-700 <%= currentPage === 'orders' ? 'bg-green-700' : '' %>">
+            My Orders
+        </a>
+        <a href="/user/cart" 
+           class="block px-6 py-2 hover:bg-green-700 <%= currentPage === 'cart' ? 'bg-green-700' : '' %>">
+            Shopping Cart
+        </a>
+        <a href="/user/profile" 
+           class="block px-6 py-2 hover:bg-green-700 <%= currentPage === 'profile' ? 'bg-green-700' : '' %>">
+            Profile
+        </a>
+        <a href="/auth/logout" 
+           class="block px-6 py-2 hover:bg-green-700">
+            Logout
+        </a>
+    </nav>
+</div> 

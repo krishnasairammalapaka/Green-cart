@@ -1,0 +1,31 @@
+<div class="bg-green-600 text-white w-64 py-6 flex flex-col">
+    <div class="px-6 mb-8">
+        <h1 class="text-2xl font-bold">Admin Panel</h1>
+    </div>
+    <nav class="flex-1">
+        <a href="/admin/dashboard" 
+           class="block px-6 py-2 hover:bg-green-700 <%= currentPage === 'dashboard' ? 'bg-green-700' : '' %>">
+            Dashboard
+        </a>
+        <a href="/admin/vegetables" 
+           class="block px-6 py-2 hover:bg-green-700 <%= currentPage === 'vegetables' ? 'bg-green-700' : '' %>">
+            Manage Vegetables
+        </a>
+        <a href="/admin/farmer-info" 
+           class="block px-6 py-2 hover:bg-green-700 <%= currentPage === 'farmer-info' ? 'bg-green-700' : '' %>">
+            Farmer Information
+        </a>
+        <a href="/admin/orders" 
+           class="block px-6 py-2 hover:bg-green-700 <%= currentPage === 'orders' ? 'bg-green-700' : '' %>">
+            Orders
+        </a>
+        <a href="/admin/users" 
+           class="block px-6 py-2 hover:bg-green-700 <%= currentPage === 'users' ? 'bg-green-700' : '' %>">
+            Users
+        </a>
+        <a href="/auth/logout" 
+           class="block px-6 py-2 hover:bg-green-700">
+            Logout
+        </a>
+    </nav>
+</div> 

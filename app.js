@@ -49,6 +49,7 @@ app.use(async (req, res, next) => {
 app.use('/auth', require('./routes/auth'));
 app.use('/', require('./routes/pages'));
 app.use('/admin', require('./routes/admin'));
+app.use('/user', require('./routes/user'));
 
 const PORT = process.env.PORT || 3000;
 
