@@ -3,6 +3,7 @@ const cors = require('cors');
 const session = require('express-session');
 const path = require('path');
 require('dotenv').config();
+const { supabase, pool } = require('./config/supabase');
 
 const app = express();
 
@@ -32,9 +33,22 @@ app.use((req, res, next) => {
     next();
 });
 
+// Add this middleware to check database connection
+app.use(async (req, res, next) => {
+    try {
+        const { data, error } = await supabase.from('users').select('count');
+        if (error) throw error;
+        next();
+    } catch (err) {
+        console.error('Database connection error:', err);
+        res.status(500).send('Database connection error');
+    }
+});
+
 // Routes
 app.use('/auth', require('./routes/auth'));
 app.use('/', require('./routes/pages'));
+app.use('/admin', require('./routes/admin'));
 
 const PORT = process.env.PORT || 3000;
 

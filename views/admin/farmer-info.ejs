@@ -26,6 +26,7 @@
                             name="landNumber" 
                             placeholder="Enter Land Number (e.g., LN001)"
                             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                            value="<%= typeof query !== 'undefined' ? query : '' %>"
                         >
                     </div>
                     <button 
@@ -36,6 +37,12 @@
                     </button>
                 </form>
             </div>
+
+            <% if (typeof error !== 'undefined' && error) { %>
+                <div class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+                    <%= error %>
+                </div>
+            <% } %>
 
             <!-- Farmers Data Table -->
             <div class="bg-white rounded-lg shadow overflow-hidden">
@@ -53,6 +60,9 @@
                             </th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Type of Soil
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Actions
                             </th>
                         </tr>
                     </thead>
@@ -72,11 +82,17 @@
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <%= land.soil_type %>
                                     </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <a href="/admin/edit-land/<%= land.id %>" 
+                                           class="text-indigo-600 hover:text-indigo-900 mr-4">Edit</a>
+                                        <button onclick="deleteLand('<%= land.id %>')" 
+                                                class="text-red-600 hover:text-red-900">Delete</button>
+                                    </td>
                                 </tr>
                             <% }); %>
                         <% } else { %>
                             <tr>
-                                <td colspan="4" class="px-6 py-4 text-center text-gray-500">
+                                <td colspan="5" class="px-6 py-4 text-center text-gray-500">
                                     No farmer data available
                                 </td>
                             </tr>
@@ -86,5 +102,25 @@
             </div>
         </div>
     </div>
+
+    <script>
+        async function deleteLand(landId) {
+            if (confirm('Are you sure you want to delete this land record?')) {
+                try {
+                    const response = await fetch(`/admin/delete-land/${landId}`, {
+                        method: 'DELETE'
+                    });
+                    if (response.ok) {
+                        window.location.reload();
+                    } else {
+                        alert('Failed to delete land record');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Failed to delete land record');
+                }
+            }
+        }
+    </script>
 </body>
 </html> 

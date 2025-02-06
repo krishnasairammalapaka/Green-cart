@@ -7,8 +7,7 @@ const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
-    console.error('Missing Supabase configuration!');
-    process.exit(1);
+    throw new Error('Missing Supabase credentials');
 }
 
 // Validate URL format
@@ -19,86 +18,47 @@ try {
     process.exit(1);
 }
 
-const supabase = createClient(supabaseUrl, supabaseKey, {
-    auth: {
-        persistSession: false
-    }
-});
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 // PostgreSQL Pool configuration
 const pool = new Pool({
     connectionString: process.env.POSTGRES_URL,
     ssl: {
         rejectUnauthorized: false
-    },
-    max: 20,
-    idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 2000,
+    }
 });
 
 // Test database connection
 const testConnection = async () => {
-    let client;
     try {
-        client = await pool.connect();
-        console.log('Successfully connected to PostgreSQL');
+        // Test Supabase connection
+        const { data, error } = await supabase.from('users').select('count');
+        if (error) throw error;
+        console.log('Successfully connected to Supabase');
 
-        // Enable the UUID extension if not exists
-        await client.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"');
-
-        // Create tables if they don't exist
-        await client.query(`
-            CREATE TABLE IF NOT EXISTS admins (
-                id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-                name TEXT NOT NULL,
-                email TEXT UNIQUE NOT NULL,
-                password TEXT NOT NULL,
-                created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-            );
-
-            CREATE TABLE IF NOT EXISTS users (
-                id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-                name TEXT NOT NULL,
-                email TEXT UNIQUE NOT NULL,
-                password TEXT NOT NULL,
-                role TEXT DEFAULT 'user',
-                created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-            );
-        `);
-
-        // Insert default admin if not exists
-        await client.query(`
-            INSERT INTO admins (name, email, password)
-            VALUES ('Admin User', 'admin@gmail.com', 'admin123')
-            ON CONFLICT (email) DO NOTHING;
-        `);
-
-        // Insert test user if not exists
-        await client.query(`
-            INSERT INTO users (name, email, password, role)
-            VALUES ('Test User', 'user@gmail.com', 'user123', 'user')
-            ON CONFLICT (email) DO NOTHING;
-        `);
-
-        console.log('Database setup completed successfully');
-    } catch (error) {
-        console.error('Database setup error:', error.message);
-        // Don't exit process, just log the error
-        console.error('Check your database connection settings');
-    } finally {
-        if (client) {
+        // Test PostgreSQL connection
+        const client = await pool.connect();
+        try {
+            await client.query('SELECT NOW()');
+            console.log('Successfully connected to PostgreSQL');
+        } finally {
             client.release();
         }
+    } catch (error) {
+        console.error('Database connection error:', error.message);
     }
 };
 
-// Run the test connection and setup
-testConnection().catch(console.error);
+// Run the test connection
+testConnection();
 
 // Error handling for the pool
 pool.on('error', (err) => {
     console.error('Unexpected error on idle client', err);
+    process.exit(-1);
 });
 
-// Export the pool for use in other files
-module.exports = { pool }; 
+module.exports = {
+    supabase,
+    pool
+}; 
