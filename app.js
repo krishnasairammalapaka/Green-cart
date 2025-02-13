@@ -50,6 +50,16 @@ app.use('/auth', require('./routes/auth'));
 app.use('/', require('./routes/pages'));
 app.use('/admin', require('./routes/admin'));
 app.use('/user', require('./routes/user'));
+app.use('/farmer', require('./routes/farmer'));
+
+// Add this before your routes
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).render('error', { 
+        message: 'Something broke!',
+        error: process.env.NODE_ENV === 'development' ? err : {}
+    });
+});
 
 const PORT = process.env.PORT || 3000;
 

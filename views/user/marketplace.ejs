@@ -5,6 +5,42 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Marketplace - Greens Cart</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .notification {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            background-color: #059669;
+            color: white;
+            transform: translateX(100%);
+            transition: transform 0.3s ease-in-out;
+            z-index: 50;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .add-to-cart-btn {
+            transition: all 0.2s ease;
+        }
+
+        .add-to-cart-btn:active {
+            transform: scale(0.95);
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+
+        .bounce {
+            animation: bounce 0.5s;
+        }
+    </style>
 </head>
 <body class="bg-gray-100">
     <div class="min-h-screen flex">
@@ -32,6 +68,16 @@
                 </div>
             </div>
 
+            <!-- Add this for notifications -->
+            <div id="notification" class="notification" role="alert">
+                <div class="flex items-center">
+                    <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                    <span id="notification-message"></span>
+                </div>
+            </div>
+
             <!-- Vegetables Grid -->
             <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
                 <% vegetables.forEach(vegetable => { %>
@@ -45,13 +91,30 @@
                             </p>
                             <div class="mt-4 flex items-center justify-between">
                                 <div class="flex items-center space-x-2">
-                                    <button onclick="decrementQuantity('<%= vegetable.id %>')" class="px-2 py-1 bg-gray-200 rounded">-</button>
-                                    <input type="number" id="quantity-<%= vegetable.id %>" value="1" min="1" max="<%= vegetable.stock_quantity %>"
-                                           class="w-16 text-center border rounded">
-                                    <button onclick="incrementQuantity('<%= vegetable.id %>')" class="px-2 py-1 bg-gray-200 rounded">+</button>
+                                    <button 
+                                        onclick="decrementQuantity('<%- vegetable.id %>')" 
+                                        class="px-2 py-1 bg-gray-200 rounded hover:bg-gray-300 transition"
+                                    >-</button>
+                                    <input 
+                                        type="number" 
+                                        id="quantity-<%- vegetable.id %>" 
+                                        value="1" 
+                                        min="1" 
+                                        max="<%- vegetable.stock_quantity %>"
+                                        class="w-16 text-center border rounded"
+                                    >
+                                    <button 
+                                        onclick="incrementQuantity('<%- vegetable.id %>')" 
+                                        class="px-2 py-1 bg-gray-200 rounded hover:bg-gray-300 transition"
+                                    >+</button>
                                 </div>
-                                <button onclick="addToCart('<%= vegetable.id %>')" 
-                                        class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
+                                <button 
+                                    onclick="addToCart('<%- vegetable.id %>', '<%- vegetable.name %>')" 
+                                    class="add-to-cart-btn px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-all duration-200 flex items-center"
+                                >
+                                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                                    </svg>
                                     Add to Cart
                                 </button>
                             </div>
@@ -97,9 +160,27 @@
             }
         }
 
-        async function addToCart(vegetableId) {
+        function showNotification(message) {
+            const notification = document.getElementById('notification');
+            const messageElement = document.getElementById('notification-message');
+            messageElement.textContent = message;
+            notification.classList.add('show');
+
+            // Hide notification after 3 seconds
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+
+        async function addToCart(vegetableId, vegetableName) {
             const quantity = document.getElementById(`quantity-${vegetableId}`).value;
+            const button = event.currentTarget;
+            
             try {
+                // Add bounce animation to button
+                button.classList.add('bounce');
+                setTimeout(() => button.classList.remove('bounce'), 500);
+
                 const response = await fetch('/user/cart/add', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -107,24 +188,39 @@
                 });
 
                 if (response.ok) {
-                    const data = await response.json();
-                    document.getElementById('cartCount').textContent = data.cartCount;
-                    alert('Added to cart successfully!');
+                    // Show success message regardless of cart count update
+                    showNotification(`${vegetableName} added to cart successfully!`);
+                    
+                    // Try to update cart count if the element exists
+                    try {
+                        const data = await response.json();
+                        const cartCountElement = document.getElementById('cartCount');
+                        if (cartCountElement) {
+                            cartCountElement.textContent = data.cartCount;
+                        }
+                    } catch (e) {
+                        console.log('Cart count update not critical');
+                    }
                 } else {
-                    alert('Failed to add to cart');
+                    const data = await response.json();
+                    showNotification(data.error || 'Failed to add to cart');
                 }
             } catch (error) {
                 console.error('Error:', error);
-                alert('Failed to add to cart');
+                showNotification('Failed to add to cart');
             }
         }
 
-        // Update cart count on page load
-        fetch('/user/cart/count')
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById('cartCount').textContent = data.count;
-            });
+        // Optional: Update cart count on page load only if element exists
+        const cartCountElement = document.getElementById('cartCount');
+        if (cartCountElement) {
+            fetch('/user/cart/count')
+                .then(response => response.json())
+                .then(data => {
+                    cartCountElement.textContent = data.count;
+                })
+                .catch(error => console.log('Cart count fetch not critical'));
+        }
     </script>
 </body>
 </html> 

@@ -18,6 +18,15 @@ const requireAdmin = (req, res, next) => {
     next();
 };
 
+// Add this helper function at the top of the file
+async function getOrderCount(userId) {
+    const { count } = await supabase
+        .from('orders')
+        .select('*', { count: 'exact' })
+        .eq('user_id', userId);
+    return count || 0;
+}
+
 // Index/Login page
 router.get('/', (req, res) => {
     if (req.session.user) {
@@ -71,14 +80,38 @@ router.get('/admin/dashboard', requireAdmin, async (req, res) => {
 });
 
 // User Dashboard
-router.get('/user/dashboard', requireAuth, (req, res) => {
+router.get('/user/dashboard', requireAuth, async (req, res) => {
     if (req.session.user.role === 'admin') {
         return res.redirect('/admin/dashboard');
     }
-    res.render('user/dashboard', {
-        title: 'User Dashboard',
-        user: req.session.user
-    });
+    try {
+        // Get order count for the user
+        const orderCount = await getOrderCount(req.session.user.id);
+
+        // Get cart count
+        const { count: cartCount } = await supabase
+            .from('cart_items')
+            .select('*', { count: 'exact' })
+            .eq('user_id', req.session.user.id);
+
+        res.render('user/dashboard', {
+            title: 'User Dashboard',
+            user: req.session.user,
+            orderCount: orderCount,
+            cartCount: cartCount || 0,
+            currentPage: 'dashboard'
+        });
+    } catch (error) {
+        console.error('Error loading dashboard:', error);
+        res.render('user/dashboard', {
+            title: 'User Dashboard',
+            user: req.session.user,
+            orderCount: 0,
+            cartCount: 0,
+            currentPage: 'dashboard',
+            error: 'Failed to load dashboard data'
+        });
+    }
 });
 
 // Search Land Information
