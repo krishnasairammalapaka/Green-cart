@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Orders - Admin Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .order-details {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+        .order-details.expanded {
+            max-height: 2000px;
+            transition: max-height 0.5s ease-in;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="min-h-screen flex">
+        <%- include('../partials/admin-sidebar', { currentPage: 'orders' }) %>
+
+        <div class="flex-1 p-8">
+            <div class="mb-8 flex justify-between items-center">
+                <div>
+                    <h2 class="text-3xl font-bold text-gray-800">Manage Orders</h2>
+                    <p class="text-gray-600 mt-2">View and manage customer orders</p>
+                </div>
+
+                <!-- Filters -->
+                <div class="flex gap-4">
+                    <select id="statusFilter" onchange="filterOrders()" class="px-4 py-2 border rounded-lg">
+                        <option value="all">All Orders</option>
+                        <option value="pending">Pending</option>
+                        <option value="accepted">Accepted</option>
+                        <option value="completed">Completed</option>
+                        <option value="cancelled">Cancelled</option>
+                    </select>
+                    <select id="orderSort" onchange="sortOrders()" class="px-4 py-2 border rounded-lg">
+                        <option value="date-desc">Latest First</option>
+                        <option value="date-asc">Oldest First</option>
+                        <option value="amount-desc">Amount: High to Low</option>
+                        <option value="amount-asc">Amount: Low to High</option>
+                    </select>
+                </div>
+            </div>
+
+            <%- include('../partials/error-message') %>
+
+            <div id="ordersContainer" class="space-y-6">
+                <% if (orders && orders.length > 0) { %>
+                    <% orders.forEach(order => { %>
+                        <div class="bg-white rounded-lg shadow-lg overflow-hidden order-card"
+                             data-order-id="<%= order.id %>"
+                             data-order-date="<%= new Date(order.created_at).getTime() %>"
+                             data-order-amount="<%= order.total_amount %>"
+                             data-order-status="<%= order.status %>">
+                            
+                            <!-- Order Header -->
+                            <div class="p-6 cursor-pointer hover:bg-gray-50" onclick="toggleOrderDetails(this)">
+                                <div class="flex justify-between items-start">
+                                    <div>
+                                        <div class="flex items-center gap-3">
+                                            <h3 class="text-lg font-semibold">Order #<%= order.id.slice(-8) %></h3>
+                                            <span class="px-2 py-1 rounded-full text-xs
+                                                <%= order.status === 'completed' ? 'bg-green-100 text-green-800' : 
+                                                   order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                                   order.status === 'accepted' ? 'bg-blue-100 text-blue-800' :
+                                                   'bg-red-100 text-red-800' %>">
+                                                <%= order.status.charAt(0).toUpperCase() + order.status.slice(1) %>
+                                            </span>
+                                        </div>
+                                        <p class="text-sm text-gray-500 mt-1">
+                                            <%= new Date(order.created_at).toLocaleString('en-US', { 
+                                                weekday: 'long', 
+                                                year: 'numeric', 
+                                                month: 'long', 
+                                                day: 'numeric',
+                                                hour: '2-digit',
+                                                minute: '2-digit'
+                                            }) %>
+                                        </p>
+                                        <div class="mt-2">
+                                            <p class="text-sm text-gray-600">
+                                                <span class="font-medium">Customer:</span> 
+                                                <%= order.users.name %> (<%= order.users.email %>)
+                                            </p>
+                                            <% if (order.users.phone) { %>
+                                                <p class="text-sm text-gray-600">
+                                                    <span class="font-medium">Phone:</span> 
+                                                    <%= order.users.phone %>
+                                                </p>
+                                            <% } %>
+                                            <p class="text-sm text-gray-600 mt-1">
+                                                <span class="font-medium">Items:</span> 
+                                                <%= order.items_count %> items
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div class="text-right">
+                                        <select onchange="updateOrderStatus('<%= order.id %>', this.value)"
+                                                class="mb-2 px-3 py-1 border rounded-lg text-sm
+                                                    <%= order.status === 'completed' ? 'bg-green-100 text-green-800' : 
+                                                       order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                                       order.status === 'accepted' ? 'bg-blue-100 text-blue-800' :
+                                                       'bg-red-100 text-red-800' %>">
+                                            <option value="pending" <%= order.status === 'pending' ? 'selected' : '' %>>Pending</option>
+                                            <option value="accepted" <%= order.status === 'accepted' ? 'selected' : '' %>>Accepted</option>
+                                            <option value="completed" <%= order.status === 'completed' ? 'selected' : '' %>>Completed</option>
+                                            <option value="cancelled" <%= order.status === 'cancelled' ? 'selected' : '' %>>Cancelled</option>
+                                        </select>
+                                        <p class="font-semibold">₹<%= order.total_amount.toFixed(2) %></p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Order Details (Expandable) -->
+                            <div class="order-details border-t">
+                                <div class="p-6">
+                                    <table class="min-w-full divide-y divide-gray-200">
+                                        <thead class="bg-gray-50">
+                                            <tr>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Item</th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Unit Price</th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Quantity</th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="bg-white divide-y divide-gray-200">
+                                            <% order.order_items.forEach(item => { %>
+                                                <tr>
+                                                    <td class="px-6 py-4">
+                                                        <div class="flex items-center">
+                                                            <img src="<%= item.vegetables.image_url %>" 
+                                                                 alt="<%= item.vegetables.name %>"
+                                                                 class="w-12 h-12 object-cover rounded">
+                                                            <div class="ml-4">
+                                                                <div class="text-sm font-medium text-gray-900">
+                                                                    <%= item.vegetables.name %>
+                                                                </div>
+                                                                <div class="text-sm text-gray-500">
+                                                                    <%= item.vegetables.unit %>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td class="px-6 py-4 text-sm text-gray-500">
+                                                        ₹<%= item.price.toFixed(2) %>
+                                                    </td>
+                                                    <td class="px-6 py-4 text-sm text-gray-500">
+                                                        <%= item.quantity %>
+                                                    </td>
+                                                    <td class="px-6 py-4 text-sm text-gray-900">
+                                                        ₹<%= (item.price * item.quantity).toFixed(2) %>
+                                                    </td>
+                                                </tr>
+                                            <% }); %>
+                                        </tbody>
+                                    </table>
+
+                                    <!-- Order Summary -->
+                                    <div class="mt-6 flex justify-end">
+                                        <div class="w-64 space-y-2">
+                                            <div class="flex justify-between text-sm">
+                                                <span class="text-gray-600">Subtotal</span>
+                                                <span>₹<%= order.subtotal.toFixed(2) %></span>
+                                            </div>
+                                            <div class="flex justify-between text-sm">
+                                                <span class="text-gray-600">Delivery Fee</span>
+                                                <span>₹50.00</span>
+                                            </div>
+                                            <div class="flex justify-between text-sm">
+                                                <span class="text-gray-600">Tax (5%)</span>
+                                                <span>₹<%= (order.subtotal * 0.05).toFixed(2) %></span>
+                                            </div>
+                                            <div class="border-t pt-2 mt-2">
+                                                <div class="flex justify-between font-bold">
+                                                    <span>Total</span>
+                                                    <span>₹<%= (order.subtotal + 50 + (order.subtotal * 0.05)).toFixed(2) %></span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    <% }); %>
+                <% } else { %>
+                    <div class="bg-white rounded-lg shadow p-8 text-center">
+                        <div class="mb-6">
+                            <svg class="w-16 h-16 mx-auto text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                      d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                            </svg>
+                        </div>
+                        <p class="text-xl text-gray-600">No orders found</p>
+                    </div>
+                <% } %>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function toggleOrderDetails(element) {
+            const details = element.nextElementSibling;
+            details.classList.toggle('expanded');
+        }
+
+        async function updateOrderStatus(orderId, status) {
+            try {
+                const response = await fetch(`/admin/orders/${orderId}/status`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ status })
+                });
+
+                if (!response.ok) throw new Error('Failed to update status');
+
+                // Update the card's dataset for filtering
+                const orderCard = document.querySelector(`[data-order-id="${orderId}"]`);
+                if (orderCard) {
+                    orderCard.dataset.orderStatus = status;
+                }
+
+                // Optionally refresh the page or show a success message
+                // location.reload();
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Failed to update order status');
+            }
+        }
+
+        function sortOrders() {
+            const container = document.getElementById('ordersContainer');
+            const orders = Array.from(container.getElementsByClassName('order-card'));
+            const sortBy = document.getElementById('orderSort').value;
+
+            orders.sort((a, b) => {
+                if (sortBy === 'date-desc' || sortBy === 'date-asc') {
+                    const dateA = parseInt(a.dataset.orderDate);
+                    const dateB = parseInt(b.dataset.orderDate);
+                    return sortBy === 'date-desc' ? dateB - dateA : dateA - dateB;
+                } else {
+                    const amountA = parseFloat(a.dataset.orderAmount);
+                    const amountB = parseFloat(b.dataset.orderAmount);
+                    return sortBy === 'amount-desc' ? amountB - amountA : amountA - amountB;
+                }
+            });
+
+            orders.forEach(order => container.appendChild(order));
+        }
+
+        function filterOrders() {
+            const status = document.getElementById('statusFilter').value;
+            const orders = document.getElementsByClassName('order-card');
+
+            Array.from(orders).forEach(order => {
+                if (status === 'all' || order.dataset.orderStatus === status) {
+                    order.style.display = 'block';
+                } else {
+                    order.style.display = 'none';
+                }
+            });
+        }
+    </script>
+</body>
+</html> 

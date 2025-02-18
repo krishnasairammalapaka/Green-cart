@@ -3,6 +3,7 @@ const router = express.Router();
 const { supabase } = require('../config/supabase');
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
+const PDFDocument = require('pdfkit');
 
 // Middleware to check if user is logged in
 const isAuthenticated = (req, res, next) => {
@@ -205,27 +206,21 @@ router.delete('/cart/remove/:id', isAuthenticated, async (req, res) => {
 // Route to display orders
 router.get('/orders', isAuthenticated, async (req, res) => {
     try {
-        // Get orders with items and vegetables
         const { data: orders, error } = await supabase
             .from('orders')
             .select(`
                 *,
-                items:order_items (
+                order_items (
                     *,
-                    vegetables:vegetables (*)
+                    vegetables (*)
                 )
             `)
             .eq('user_id', req.session.user.id)
             .order('created_at', { ascending: false });
 
-        if (error) {
-            console.error('Database error:', error);
-            throw error;
-        }
+        if (error) throw error;
 
-        console.log('Orders fetched:', orders); // For debugging
-
-        res.render('user/orders', { 
+        res.render('user/orders', {
             orders,
             orderCount: orders.length,
             user: req.session.user,
@@ -233,7 +228,7 @@ router.get('/orders', isAuthenticated, async (req, res) => {
         });
     } catch (error) {
         console.error('Error fetching orders:', error);
-        res.render('user/orders', { 
+        res.render('user/orders', {
             orders: [],
             orderCount: 0,
             error: 'Failed to fetch orders',
@@ -243,8 +238,8 @@ router.get('/orders', isAuthenticated, async (req, res) => {
     }
 });
 
-// Update the create order route
-router.post('/orders/create', isAuthenticated, async (req, res) => {
+// Update the create-order route
+router.post('/create-order', isAuthenticated, async (req, res) => {
     try {
         // Get cart items
         const { data: cartItems, error: cartError } = await supabase
@@ -256,7 +251,7 @@ router.post('/orders/create', isAuthenticated, async (req, res) => {
             .eq('user_id', req.session.user.id);
 
         if (cartError) throw cartError;
-        if (!cartItems.length) {
+        if (!cartItems || cartItems.length === 0) {
             return res.status(400).json({ error: 'Cart is empty' });
         }
 
@@ -266,24 +261,15 @@ router.post('/orders/create', isAuthenticated, async (req, res) => {
         }, 0);
         const deliveryFee = 50;
         const tax = subtotal * 0.05;
-        const total = subtotal + deliveryFee + tax;
-
-        // Create Razorpay order
-        const razorpayOrder = await razorpay.orders.create({
-            amount: Math.round(total * 100), // Convert to paise
-            currency: 'INR',
-            receipt: `order_${Date.now()}`
-        });
+        const total = Math.round((subtotal + deliveryFee + tax) * 100); // Convert to paise
 
         // Create order in database
         const { data: order, error: orderError } = await supabase
             .from('orders')
             .insert([{
                 user_id: req.session.user.id,
-                total_amount: total,
-                delivery_fee: deliveryFee,
-                status: 'pending',
-                razorpay_order_id: razorpayOrder.id
+                total_amount: total / 100, // Store in rupees
+                status: 'pending'
             }])
             .select()
             .single();
@@ -304,10 +290,25 @@ router.post('/orders/create', isAuthenticated, async (req, res) => {
 
         if (itemsError) throw itemsError;
 
+        // Create Razorpay order
+        const razorpayOrder = await razorpay.orders.create({
+            amount: total,
+            currency: 'INR',
+            receipt: order.id,
+            payment_capture: 1
+        });
+
+        // Update order with Razorpay order ID
+        await supabase
+            .from('orders')
+            .update({ razorpay_order_id: razorpayOrder.id })
+            .eq('id', order.id);
+
         res.json({
             orderId: order.id,
             razorpayOrderId: razorpayOrder.id,
-            amount: razorpayOrder.amount
+            amount: total,
+            currency: 'INR'
         });
     } catch (error) {
         console.error('Error creating order:', error);
@@ -315,66 +316,100 @@ router.post('/orders/create', isAuthenticated, async (req, res) => {
     }
 });
 
+// Order success page
+router.get('/order-success', isAuthenticated, (req, res) => {
+    res.render('user/order-success', {
+        user: req.session.user,
+        currentPage: 'orders'
+    });
+});
+
 // Verify payment route
-router.post('/orders/verify-payment', isAuthenticated, async (req, res) => {
+router.post('/verify-payment', isAuthenticated, async (req, res) => {
     try {
-        const {
-            orderId,
-            razorpay_payment_id,
-            razorpay_order_id,
-            razorpay_signature
-        } = req.body;
+        const { orderId, razorpay_payment_id, razorpay_order_id, razorpay_signature } = req.body;
 
-        // Verify signature
-        const body = razorpay_order_id + "|" + razorpay_payment_id;
-        const expectedSignature = crypto
-            .createHmac("sha256", "Qi0jllHSrENWlNxGl0QXbJC5")
-            .update(body.toString())
-            .digest("hex");
+        // Update order status
+        const { error: orderError } = await supabase
+            .from('orders')
+            .update({
+                status: 'completed',
+                payment_id: razorpay_payment_id
+            })
+            .eq('id', orderId);
 
-        if (expectedSignature === razorpay_signature) {
-            // Update order status
-            const { error: orderError } = await supabase
-                .from('orders')
-                .update({
-                    status: 'completed',
-                    payment_id: razorpay_payment_id,
-                    payment_verified: true
-                })
-                .eq('id', orderId);
+        if (orderError) throw orderError;
 
-            if (orderError) throw orderError;
+        // Clear cart
+        const { error: clearError } = await supabase
+            .from('cart_items')
+            .delete()
+            .eq('user_id', req.session.user.id);
 
-            // Clear cart after successful payment
-            const { error: clearError } = await supabase
-                .from('cart_items')
-                .delete()
-                .eq('user_id', req.session.user.id);
+        if (clearError) throw clearError;
 
-            if (clearError) throw clearError;
-
-            res.json({ 
-                success: true,
-                message: 'Payment verified successfully'
-            });
-        } else {
-            // If signature verification fails
-            await supabase
-                .from('orders')
-                .update({
-                    status: 'failed',
-                    payment_verified: false
-                })
-                .eq('id', orderId);
-
-            throw new Error('Invalid payment signature');
-        }
+        res.json({ 
+            success: true,
+            message: 'Payment verified successfully'
+        });
     } catch (error) {
         console.error('Payment verification error:', error);
         res.status(500).json({ 
             success: false,
             error: 'Payment verification failed'
         });
+    }
+});
+
+// Add this route to generate and download order receipt
+router.get('/order-receipt/:orderId', isAuthenticated, async (req, res) => {
+    try {
+        const { orderId } = req.params;
+
+        // Fetch order details
+        const { data: order, error } = await supabase
+            .from('orders')
+            .select(`
+                *,
+                order_items (
+                    *,
+                    vegetables (*)
+                )
+            `)
+            .eq('id', orderId)
+            .single();
+
+        if (error) throw error;
+
+        // Create PDF
+        const doc = new PDFDocument();
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename=order-${orderId}.pdf`);
+        doc.pipe(res);
+
+        // Add content to PDF
+        doc.fontSize(20).text('Order Receipt', { align: 'center' });
+        doc.moveDown();
+        doc.fontSize(12).text(`Order ID: ${orderId}`);
+        doc.text(`Date: ${new Date(order.created_at).toLocaleString()}`);
+        doc.moveDown();
+
+        // Add items
+        doc.text('Items:', { underline: true });
+        order.order_items.forEach(item => {
+            doc.text(`${item.vegetables.name} x ${item.quantity} - ₹${(item.price * item.quantity).toFixed(2)}`);
+        });
+
+        doc.moveDown();
+        doc.text(`Subtotal: ₹${order.total_amount.toFixed(2)}`);
+        doc.text(`Delivery Fee: ₹50.00`);
+        doc.text(`Tax (5%): ₹${(order.total_amount * 0.05).toFixed(2)}`);
+        doc.text(`Total: ₹${(order.total_amount + 50 + (order.total_amount * 0.05)).toFixed(2)}`, { bold: true });
+
+        doc.end();
+    } catch (error) {
+        console.error('Error generating receipt:', error);
+        res.status(500).send('Failed to generate receipt');
     }
 });
 

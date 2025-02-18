@@ -9,45 +9,40 @@ router.post('/login', async (req, res) => {
         console.log('Attempting login for email:', email);
 
         // Check in all tables using Supabase
-        const [{ data: admin }, { data: user }, { data: farmer }] = await Promise.all([
-            supabase.from('admins').select('*').eq('email', email).single(),
-            supabase.from('users').select('*').eq('email', email).single(),
-            supabase.from('farmers').select('*').eq('email', email).single()
-        ]);
+        const { data: admin } = await supabase
+            .from('admins')
+            .select('*')
+            .eq('email', email)
+            .single();
 
-        // Simple password comparison for now
-        if (admin && admin.password === password && admin.role === 'admin') {
+        // Check admin first
+        if (admin && admin.password === password) {
             console.log('Admin login successful');
             req.session.user = {
                 id: admin.id,
                 name: admin.name,
                 email: admin.email,
-                role: admin.role
+                role: 'admin'
             };
             return res.redirect('/admin/dashboard');
         }
 
-        if (user && user.password === password && user.role === 'user') {
+        // Check user credentials
+        const { data: user } = await supabase
+            .from('users')
+            .select('*')
+            .eq('email', email)
+            .single();
+
+        if (user && user.password === password) {
             console.log('User login successful');
             req.session.user = {
                 id: user.id,
                 name: user.name,
                 email: user.email,
-                role: user.role
+                role: 'user'
             };
             return res.redirect('/user/dashboard');
-        }
-
-        if (farmer && farmer.password === password && farmer.role === 'farmer') {
-            console.log('Farmer login successful');
-            req.session.user = {
-                id: farmer.id,
-                name: farmer.name,
-                email: farmer.email,
-                role: farmer.role,
-                land_number: farmer.land_number
-            };
-            return res.redirect('/farmer/dashboard');
         }
 
         // If no match found
@@ -125,4 +120,17 @@ router.get('/logout', (req, res) => {
     });
 });
 
-module.exports = router; 
+// Add admin middleware
+const isAdmin = (req, res, next) => {
+    if (req.session.user && req.session.user.role === 'admin') {
+        next();
+    } else {
+        res.status(403).redirect('/');
+    }
+};
+
+// Export both router and middleware
+module.exports = {
+    router,
+    isAdmin
+}; 

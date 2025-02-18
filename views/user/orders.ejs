@@ -5,6 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Orders - Greens Cart</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .order-details {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+        .order-details.expanded {
+            max-height: 2000px;
+            transition: max-height 0.5s ease-in;
+        }
+    </style>
 </head>
 <body class="bg-gray-100">
     <div class="min-h-screen flex">
@@ -13,73 +24,131 @@
 
         <!-- Main Content -->
         <div class="flex-1 p-8">
-            <div class="mb-8">
-                <h2 class="text-3xl font-bold text-gray-800">My Orders</h2>
+            <div class="mb-8 flex justify-between items-center">
+                <div>
+                    <h2 class="text-3xl font-bold text-gray-800">My Orders</h2>
+                    <p class="text-gray-600 mt-2">View and track your orders</p>
+                </div>
+
+                <!-- Sorting and Filtering Options -->
+                <div class="flex gap-4">
+                    <select id="orderSort" onchange="sortOrders()" class="px-4 py-2 border rounded-lg">
+                        <option value="date-desc">Latest First</option>
+                        <option value="date-asc">Oldest First</option>
+                        <option value="amount-desc">Amount: High to Low</option>
+                        <option value="amount-asc">Amount: Low to High</option>
+                    </select>
+                    <select id="statusFilter" onchange="filterOrders()" class="px-4 py-2 border rounded-lg">
+                        <option value="all">All Status</option>
+                        <option value="completed">Completed</option>
+                        <option value="pending">Pending</option>
+                    </select>
+                </div>
             </div>
 
             <%- include('../partials/error-message') %>
 
-            <div class="space-y-6">
+            <div id="ordersContainer" class="space-y-6">
                 <% if (orders && orders.length > 0) { %>
                     <% orders.forEach(order => { %>
-                        <div class="bg-white rounded-lg shadow overflow-hidden">
-                            <div class="p-6">
-                                <div class="flex justify-between items-start mb-4">
+                        <div class="bg-white rounded-lg shadow overflow-hidden order-card" 
+                             data-order-date="<%= new Date(order.created_at).getTime() %>"
+                             data-order-amount="<%= order.total_amount %>"
+                             data-order-status="<%= order.status %>">
+                            <!-- Order Header - Clickable -->
+                            <div class="p-6 cursor-pointer hover:bg-gray-50" onclick="toggleOrderDetails(this)">
+                                <div class="flex justify-between items-start">
                                     <div>
-                                        <h3 class="text-lg font-semibold">
-                                            Order #<%- order.id.slice(-8) %>
-                                        </h3>
+                                        <h3 class="text-lg font-semibold">Order #<%= order.id.slice(-8) %></h3>
                                         <p class="text-sm text-gray-500">
-                                            Placed on <%- new Date(order.created_at).toLocaleDateString() %>
+                                            <%= new Date(order.created_at).toLocaleString('en-US', { 
+                                                weekday: 'long', 
+                                                year: 'numeric', 
+                                                month: 'long', 
+                                                day: 'numeric',
+                                                hour: '2-digit',
+                                                minute: '2-digit'
+                                            }) %>
                                         </p>
                                     </div>
                                     <div class="text-right">
-                                        <div class="text-lg font-bold">₹<%- order.total_amount.toFixed(2) %></div>
                                         <span class="px-3 py-1 rounded-full text-sm
                                             <%= order.status === 'completed' ? 'bg-green-100 text-green-800' : 
-                                               order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                                               'bg-red-100 text-red-800' %>">
-                                            <%- order.status.charAt(0).toUpperCase() + order.status.slice(1) %>
+                                               order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
+                                               'bg-gray-100 text-gray-800' %>">
+                                            <%= order.status.charAt(0).toUpperCase() + order.status.slice(1) %>
                                         </span>
+                                        <p class="mt-2 font-semibold">₹<%= order.total_amount.toFixed(2) %></p>
                                     </div>
                                 </div>
+                            </div>
 
-                                <!-- Order Items -->
-                                <div class="border-t pt-4">
-                                    <% if (order.items && order.items.length > 0) { %>
-                                        <% order.items.forEach(item => { %>
-                                            <div class="flex items-center py-2">
-                                                <img src="<%- item.vegetables.image_url %>" 
-                                                     alt="<%- item.vegetables.name %>"
-                                                     class="w-16 h-16 object-cover rounded">
-                                                <div class="ml-4 flex-grow">
-                                                    <div class="font-medium"><%- item.vegetables.name %></div>
-                                                    <div class="text-sm text-gray-500">
-                                                        Quantity: <%- item.quantity %> × ₹<%- item.price.toFixed(2) %>
+                            <!-- Expandable Order Details -->
+                            <div class="order-details border-t">
+                                <div class="p-6">
+                                    <!-- Order Items Table -->
+                                    <div class="mb-6">
+                                        <table class="min-w-full divide-y divide-gray-200">
+                                            <thead class="bg-gray-50">
+                                                <tr>
+                                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Item</th>
+                                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Quantity</th>
+                                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Price</th>
+                                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody class="bg-white divide-y divide-gray-200">
+                                                <% order.order_items.forEach(item => { %>
+                                                    <tr>
+                                                        <td class="px-6 py-4">
+                                                            <div class="flex items-center">
+                                                                <img src="<%= item.vegetables.image_url %>" 
+                                                                     alt="<%= item.vegetables.name %>"
+                                                                     class="w-12 h-12 object-cover rounded">
+                                                                <span class="ml-4"><%= item.vegetables.name %></span>
+                                                            </div>
+                                                        </td>
+                                                        <td class="px-6 py-4"><%= item.quantity %></td>
+                                                        <td class="px-6 py-4">₹<%= item.price.toFixed(2) %></td>
+                                                        <td class="px-6 py-4">₹<%= (item.price * item.quantity).toFixed(2) %></td>
+                                                    </tr>
+                                                <% }); %>
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    <!-- Order Summary and Actions -->
+                                    <div class="flex justify-between items-start">
+                                        <!-- Order Summary -->
+                                        <div class="w-64">
+                                            <div class="space-y-2">
+                                                <div class="flex justify-between text-sm">
+                                                    <span class="text-gray-600">Subtotal</span>
+                                                    <span>₹<%= order.total_amount.toFixed(2) %></span>
+                                                </div>
+                                                <div class="flex justify-between text-sm">
+                                                    <span class="text-gray-600">Delivery Fee</span>
+                                                    <span>₹50.00</span>
+                                                </div>
+                                                <div class="flex justify-between text-sm">
+                                                    <span class="text-gray-600">Tax (5%)</span>
+                                                    <span>₹<%= (order.total_amount * 0.05).toFixed(2) %></span>
+                                                </div>
+                                                <div class="border-t pt-2 mt-2">
+                                                    <div class="flex justify-between font-bold">
+                                                        <span>Total</span>
+                                                        <span>₹<%= (order.total_amount + 50 + (order.total_amount * 0.05)).toFixed(2) %></span>
                                                     </div>
                                                 </div>
-                                                <div class="text-right">
-                                                    ₹<%- (item.quantity * item.price).toFixed(2) %>
-                                                </div>
                                             </div>
-                                        <% }); %>
-                                    <% } %>
-                                </div>
+                                        </div>
 
-                                <!-- Order Summary -->
-                                <div class="border-t mt-4 pt-4">
-                                    <div class="space-y-2">
-                                        <div class="flex justify-between text-sm">
-                                            <span>Subtotal</span>
-                                            <span>₹<%- (order.total_amount - order.delivery_fee).toFixed(2) %></span>
-                                        </div>
-                                        <div class="flex justify-between text-sm">
-                                            <span>Delivery Fee</span>
-                                            <span>₹<%- order.delivery_fee.toFixed(2) %></span>
-                                        </div>
-                                        <div class="flex justify-between font-bold">
-                                            <span>Total</span>
-                                            <span>₹<%- order.total_amount.toFixed(2) %></span>
+                                        <!-- Actions -->
+                                        <div class="flex gap-4">
+                                            <button onclick="downloadAcknowledgement('<%= order.id %>')"
+                                                    class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                                                Download Receipt
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
@@ -87,10 +156,12 @@
                         </div>
                     <% }); %>
                 <% } else { %>
+                    <!-- Empty State -->
                     <div class="bg-white rounded-lg shadow p-8 text-center">
                         <div class="mb-6">
                             <svg class="w-16 h-16 mx-auto text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                      d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
                             </svg>
                         </div>
                         <p class="text-xl text-gray-600 mb-6">No orders found</p>
@@ -103,5 +174,65 @@
             </div>
         </div>
     </div>
+
+    <script>
+        function toggleOrderDetails(element) {
+            const details = element.nextElementSibling;
+            details.classList.toggle('expanded');
+        }
+
+        function sortOrders() {
+            const container = document.getElementById('ordersContainer');
+            const orders = Array.from(container.getElementsByClassName('order-card'));
+            const sortBy = document.getElementById('orderSort').value;
+
+            orders.sort((a, b) => {
+                if (sortBy === 'date-desc' || sortBy === 'date-asc') {
+                    const dateA = parseInt(a.dataset.orderDate);
+                    const dateB = parseInt(b.dataset.orderDate);
+                    return sortBy === 'date-desc' ? dateB - dateA : dateA - dateB;
+                } else {
+                    const amountA = parseFloat(a.dataset.orderAmount);
+                    const amountB = parseFloat(b.dataset.orderAmount);
+                    return sortBy === 'amount-desc' ? amountB - amountA : amountA - amountB;
+                }
+            });
+
+            orders.forEach(order => container.appendChild(order));
+        }
+
+        function filterOrders() {
+            const status = document.getElementById('statusFilter').value;
+            const orders = document.getElementsByClassName('order-card');
+
+            Array.from(orders).forEach(order => {
+                if (status === 'all' || order.dataset.orderStatus === status) {
+                    order.style.display = 'block';
+                } else {
+                    order.style.display = 'none';
+                }
+            });
+        }
+
+        async function downloadAcknowledgement(orderId) {
+            try {
+                const response = await fetch(`/user/order-receipt/${orderId}`);
+                if (!response.ok) throw new Error('Failed to generate receipt');
+                
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `order-${orderId}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                a.remove();
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Failed to download receipt');
+            }
+        }
+    </script>
 </body>
 </html> 

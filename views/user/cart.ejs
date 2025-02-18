@@ -111,10 +111,16 @@
                                         <span>₹<%- (total + 50 + (total * 0.05)).toFixed(2) %></span>
                                     </div>
                                 </div>
-                                <button onclick="placeOrder()"
-                                        class="w-full mt-6 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors duration-200">
-                                    Place Order
-                                </button>
+                                <div class="mt-6 flex justify-end">
+                                    <button onclick="placeOrder()" 
+                                            class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all duration-200 flex items-center">
+                                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                                  d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                                        </svg>
+                                        Place Order
+                                    </button>
+                                </div>
                                 <a href="/user/marketplace" 
                                    class="block text-center mt-4 text-green-600 hover:text-green-700">
                                     Continue Shopping
@@ -186,54 +192,60 @@
 
         async function placeOrder() {
             try {
-                // First create order on backend
-                const response = await fetch('/user/orders/create', {
+                const response = await fetch('/user/create-order', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
                 });
 
                 if (!response.ok) {
-                    throw new Error('Failed to create order');
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to create order');
                 }
-
-                const orderData = await response.json();
-
-                // Initialize Razorpay payment
+                
+                const data = await response.json();
+                
                 const options = {
-                    key: 'rzp_test_CVbypqu6YtbzvT', // Your Razorpay key
-                    amount: orderData.amount,
-                    currency: 'INR',
-                    name: 'Green Cart',
-                    description: 'Vegetable Purchase',
-                    order_id: orderData.razorpayOrderId,
+                    key: 'rzp_test_CVbypqu6YtbzvT',
+                    amount: data.amount,
+                    currency: data.currency,
+                    name: 'Greens Cart',
+                    description: 'Purchase of Vegetables',
+                    order_id: data.razorpayOrderId,
                     handler: async function (response) {
                         try {
-                            // Verify payment with backend
-                            const verifyResponse = await fetch('/user/orders/verify-payment', {
+                            const verifyResponse = await fetch('/user/verify-payment', {
                                 method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
                                 body: JSON.stringify({
-                                    orderId: orderData.orderId,
+                                    orderId: data.orderId,
                                     razorpay_payment_id: response.razorpay_payment_id,
                                     razorpay_order_id: response.razorpay_order_id,
                                     razorpay_signature: response.razorpay_signature
                                 })
                             });
 
-                            if (verifyResponse.ok) {
-                                alert('Payment successful! Redirecting to orders page...');
-                                window.location.href = '/user/orders';
-                            } else {
+                            if (!verifyResponse.ok) {
                                 throw new Error('Payment verification failed');
                             }
+
+                            const verifyData = await verifyResponse.json();
+                            if (verifyData.success) {
+                                window.location.href = '/user/order-success';
+                            } else {
+                                alert('Payment verification failed');
+                            }
                         } catch (error) {
-                            console.error('Payment verification error:', error);
-                            alert('Payment verification failed. Please contact support.');
+                            console.error('Error:', error);
+                            alert('Payment verification failed');
                         }
                     },
                     prefill: {
-                        name: '<%- user.name %>',
-                        email: '<%- user.email %>'
+                        name: '<%= user.name %>',
+                        email: '<%= user.email %>'
                     },
                     theme: {
                         color: '#16a34a'
@@ -245,16 +257,15 @@
                     }
                 };
 
-                // Create Razorpay instance and open payment modal
                 const rzp = new Razorpay(options);
                 rzp.on('payment.failed', function (response) {
                     alert('Payment failed: ' + response.error.description);
                 });
                 rzp.open();
-
+                
             } catch (error) {
                 console.error('Error:', error);
-                alert('Failed to process order. Please try again.');
+                alert(error.message || 'Failed to create order');
             }
         }
     </script>

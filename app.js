@@ -14,13 +14,10 @@ app.use(express.urlencoded({ extended: true }));
 
 // Set up session middleware before routes
 app.use(session({
-    secret: process.env.JWT_SECRET || 'your-secret-key',
+    secret: process.env.JWT_SECRET,
     resave: false,
     saveUninitialized: false,
-    cookie: { 
-        secure: process.env.NODE_ENV === 'production',
-        maxAge: 24 * 60 * 60 * 1000 // 24 hours
-    }
+    cookie: { secure: false } // set to true if using HTTPS
 }));
 
 // Set view engine
@@ -46,9 +43,11 @@ app.use(async (req, res, next) => {
 });
 
 // Routes
-app.use('/auth', require('./routes/auth'));
+const { router: authRouter } = require('./routes/auth');
+app.use('/auth', authRouter);
 app.use('/', require('./routes/pages'));
-app.use('/admin', require('./routes/admin'));
+const adminRouter = require('./routes/admin');
+app.use('/admin', adminRouter);
 app.use('/user', require('./routes/user'));
 app.use('/farmer', require('./routes/farmer'));
 
@@ -64,5 +63,5 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+    console.log(`Server running on port ${PORT}`);
 }); 

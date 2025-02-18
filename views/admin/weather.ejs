@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Information - Admin Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .weather-card {
+            transition: all 0.3s ease;
+        }
+        .weather-card:hover {
+            transform: translateY(-5px);
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="min-h-screen flex">
+        <!-- Include Admin Sidebar -->
+        <%- include('../partials/admin-sidebar', { currentPage: 'weather' }) %>
+
+        <!-- Main Content -->
+        <div class="flex-1 p-8">
+            <div class="mb-8">
+                <h2 class="text-3xl font-bold text-gray-800">Weather Information</h2>
+                <p class="text-gray-600 mt-2">Weather conditions for PIN code: <%= weatherData.location.pincode %></p>
+            </div>
+
+            <!-- Location Info -->
+            <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
+                <div class="grid grid-cols-3 gap-4">
+                    <div class="text-center">
+                        <h3 class="text-lg font-semibold text-gray-600">PIN Code</h3>
+                        <p class="text-2xl font-bold text-gray-800"><%= weatherData.location.pincode %></p>
+                    </div>
+                    <div class="text-center">
+                        <h3 class="text-lg font-semibold text-gray-600">District</h3>
+                        <p class="text-2xl font-bold text-gray-800"><%= weatherData.location.district %></p>
+                    </div>
+                    <div class="text-center">
+                        <h3 class="text-lg font-semibold text-gray-600">State</h3>
+                        <p class="text-2xl font-bold text-gray-800"><%= weatherData.location.state %></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Current Weather -->
+            <div class="bg-white rounded-lg shadow-lg p-6 mb-8 weather-card">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">Current Weather</h3>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+                    <div class="text-center">
+                        <div class="text-4xl font-bold text-blue-600">
+                            <%= weatherData.current.temperature %>°C
+                        </div>
+                        <p class="text-gray-600">Temperature</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-4xl font-bold text-green-600">
+                            <%= weatherData.current.humidity %>%
+                        </div>
+                        <p class="text-gray-600">Humidity</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-4xl font-bold text-yellow-600">
+                            <%= weatherData.current.windSpeed %> km/h
+                        </div>
+                        <p class="text-gray-600">Wind Speed</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-4xl font-bold text-purple-600">
+                            <%= weatherData.current.rainfall %> mm
+                        </div>
+                        <p class="text-gray-600">Rainfall</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Weather Forecast -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <% weatherData.forecast.forEach(day => { %>
+                    <div class="bg-white rounded-lg shadow-lg p-6 weather-card">
+                        <h4 class="font-semibold text-gray-800 mb-3">
+                            <%= new Date(day.date).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' }) %>
+                        </h4>
+                        <div class="space-y-2">
+                            <p class="text-2xl font-bold text-gray-800">
+                                <%= day.maxTemp %>°C / <%= day.minTemp %>°C
+                            </p>
+                            <p class="text-gray-600"><%= day.condition %></p>
+                            <p class="text-blue-600">Rainfall: <%= day.rainfall %> mm</p>
+                        </div>
+                    </div>
+                <% }); %>
+            </div>
+
+            <!-- Farming Tips -->
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">Farming Tips</h3>
+                <ul class="space-y-3">
+                    <% weatherData.farmingTips.forEach(tip => { %>
+                        <li class="flex items-center text-gray-700">
+                            <svg class="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            <%= tip %>
+                        </li>
+                    <% }); %>
+                </ul>
+            </div>
+        </div>
+    </div>
+</body>
+</html> 
