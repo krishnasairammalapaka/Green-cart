@@ -4,7 +4,7 @@ const cors = require('cors');
 const session = require('express-session');
 const path = require('path');
 const { supabase } = require('./config/supabase');
-const passport = require('passport');
+const passport = require('./config/passport-google');
 const PDFDocument = require('pdfkit');
 const fs = require('fs');
 
@@ -17,11 +17,11 @@ app.use(express.urlencoded({ extended: true }));
 
 // Set up session middleware with more secure configuration
 app.use(session({
-    secret: process.env.SESSION_SECRET || 'your-secret-key',
+    secret: process.env.JWT_SECRET,
     resave: false,
     saveUninitialized: false,
-    cookie: { 
-        secure: process.env.NODE_ENV === 'production',
+    cookie: {
+        secure: false, // Set to true in production with HTTPS
         httpOnly: true,
         maxAge: 24 * 60 * 60 * 1000 // 24 hours
     }
@@ -72,7 +72,7 @@ app.use('/', indexRouter);  // This should be the first route
 
 // Other routes
 const { router: authRouter } = require('./routes/auth');
-app.use('/auth', authRouter);
+app.use('/auth', authRouter);  // This mounts all auth routes under /auth
 app.use('/admin', require('./routes/admin'));
 app.use('/user', require('./routes/user'));
 app.use('/farmer', require('./routes/farmer'));

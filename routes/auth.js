@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { supabase } = require('../config/supabase');
+const passport = require('passport');
 
 // Login route for all users (admin, user, farmer)
 router.post('/login', async (req, res) => {
@@ -128,6 +129,34 @@ const isAdmin = (req, res, next) => {
         res.status(403).redirect('/');
     }
 };
+
+// Google OAuth routes
+router.get('/google',
+  passport.authenticate('google', { 
+    scope: ['profile', 'email'],
+    prompt: 'select_account'
+  })
+);
+
+router.get('/google/callback',
+  passport.authenticate('google', { 
+    failureRedirect: '/',
+    failureFlash: true
+  }),
+  function(req, res) {
+    if (req.user) {
+      req.session.user = {
+        id: req.user.id,
+        email: req.user.email,
+        role: req.user.role,
+        name: req.user.name || req.user.full_name,
+        avatar_url: req.user.avatar_url
+      };
+      return res.redirect('/user/dashboard');
+    }
+    res.redirect('/');
+  }
+);
 
 // Export both router and middleware
 module.exports = {
