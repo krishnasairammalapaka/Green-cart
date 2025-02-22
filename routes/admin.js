@@ -522,82 +522,111 @@ router.get('/weather', async (req, res) => {
     }
 });
 
-// Update the orders route
-router.get('/orders', isAdmin, async (req, res) => {
+// Orders page route
+router.get('/orders', async (req, res) => {
     try {
-        // Modify the select query to match your actual schema
+        console.log('Fetching orders...');
+        
+        // First fetch orders with user details from auth.users
         const { data: orders, error } = await supabase
             .from('orders')
             .select(`
                 id,
                 user_id,
                 status,
+                total_amount,
                 created_at,
                 updated_at,
-                users (
-                    id,
-                    name,
-                    email,
-                    address,
-                    city,
-                    state,
-                    pincode
-                ),
                 order_items (
                     id,
                     quantity,
                     price,
-                    vegetable_id,
                     vegetables (
                         id,
                         name,
-                        image_url,
-                        price,
-                        unit
+                        image_url
                     )
                 )
             `)
             .order('created_at', { ascending: false });
 
         if (error) {
-            console.error('Supabase error:', error);
+            console.error('Error fetching orders:', error);
             throw error;
         }
 
-        // Calculate additional order information
+        // Fetch user details separately
+        const userIds = orders.map(order => order.user_id);
+        const { data: users, error: userError } = await supabase
+            .from('users')
+            .select('id, name, email')
+            .in('id', userIds);
+
+        if (userError) {
+            console.error('Error fetching users:', userError);
+            throw userError;
+        }
+
+        // Create a user lookup map
+        const userMap = users.reduce((acc, user) => {
+            acc[user.id] = user;
+            return acc;
+        }, {});
+
+        // Combine orders with user details
         const processedOrders = orders.map(order => {
-            const orderItems = order.order_items || [];
-            const subtotal = orderItems.reduce((sum, item) => 
-                sum + (item.price * item.quantity), 0);
-            
-            return {
-                ...order,
-                subtotal,
-                items_count: orderItems.reduce((sum, item) => sum + item.quantity, 0),
-                total_amount: subtotal + 50 + (subtotal * 0.05) // Base + Delivery fee (50) + Tax (5%)
-            };
+            try {
+                // Get user details
+                const user = userMap[order.user_id] || { name: 'Unknown', email: 'No email' };
+
+                // Calculate items count
+                const itemsCount = order.order_items?.length || 0;
+
+                // Calculate subtotal
+                const subtotal = order.order_items?.reduce((sum, item) => {
+                    return sum + ((item.quantity || 0) * (item.price || 0));
+                }, 0) || 0;
+
+                // Calculate total amount
+                const deliveryFee = 50;
+                const taxRate = 0.05;
+                const taxAmount = subtotal * taxRate;
+                const totalAmount = subtotal + deliveryFee + taxAmount;
+
+                return {
+                    ...order,
+                    users: user,
+                    items_count: itemsCount,
+                    subtotal: subtotal,
+                    delivery_fee: deliveryFee,
+                    tax_amount: taxAmount,
+                    total_amount: totalAmount
+                };
+            } catch (err) {
+                console.error('Error processing order:', order.id, err);
+                return order;
+            }
         });
 
-        res.render('admin/orders', {
+        console.log('Processed orders:', processedOrders);
+
+        res.render('admin/orders', { 
             orders: processedOrders,
-            orderCount: orders.length,
-            currentPage: 'orders',
-            error: null
+            error: null,
+            currentPage: 'orders'
         });
-
     } catch (error) {
-        console.error('Error fetching orders:', error);
-        res.render('admin/orders', {
+        console.error('Error in /admin/orders:', error);
+        res.render('admin/orders', { 
             orders: [],
-            orderCount: 0,
-            currentPage: 'orders',
-            error: 'Failed to fetch orders: ' + error.message
+            error: 'Failed to fetch orders',
+            currentPage: 'orders'
         });
     }
 });
 
-// Update order status route
-router.post('/orders/:orderId/status', isAdmin, async (req, res) => {
+// Update order status
+router.post('/orders/:orderId/status', async (req, res) => {
     try {
         const { orderId } = req.params;
         const { status } = req.body;
@@ -605,8 +634,8 @@ router.post('/orders/:orderId/status', isAdmin, async (req, res) => {
         const { error } = await supabase
             .from('orders')
             .update({ 
-                status: status,
-                updated_at: new Date().toISOString()
+                status,
+                updated_at: new Date()
             })
             .eq('id', orderId);
 
@@ -910,65 +939,110 @@ router.put('/users/update-address', isAdmin, async (req, res) => {
     }
 });
 
-// Get delivery information for an order
-router.get('/orders/:orderId/delivery-info', isAdmin, async (req, res) => {
+// Add this route to handle delivery info
+router.get('/orders/:orderId/delivery-info', async (req, res) => {
     try {
-        const { data: order, error } = await supabase
+        const { orderId } = req.params;
+
+        // Fetch order with user details
+        const { data: order, error: orderError } = await supabase
             .from('orders')
             .select(`
                 *,
                 users (
+                    id,
+                    name,
+                    email,
                     address,
                     city,
                     state,
                     pincode
                 )
             `)
-            .eq('id', req.params.orderId)
+            .eq('id', orderId)
             .single();
 
-        if (error) throw error;
+        if (orderError) {
+            console.error('Error fetching order:', orderError);
+            return res.status(500).json({ error: 'Failed to fetch order' });
+        }
 
-        // Geocode the address to get coordinates
-        const address = `${order.users.address}, ${order.users.city}, ${order.users.state} ${order.users.pincode}`;
-        const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${process.env.GOOGLE_MAPS_API_KEY}`;
-        
-        const response = await axios.get(geocodeUrl);
-        const location = response.data.results[0].geometry.location;
+        if (!order || !order.users) {
+            return res.status(404).json({ error: 'Order or user not found' });
+        }
 
-        res.json({
-            address: address,
-            latitude: location.lat,
-            longitude: location.lng
+        // Construct full address
+        const fullAddress = `${order.users.address}, ${order.users.city}, ${order.users.state} ${order.users.pincode}`;
+
+        // Use Google Geocoding API to get coordinates
+        const geocoder = new google.maps.Geocoder();
+        geocoder.geocode({ address: fullAddress }, async (results, status) => {
+            if (status === 'OK' && results[0]) {
+                const location = results[0].geometry.location;
+
+                // Return the delivery info with coordinates
+                res.json({
+                    address: fullAddress,
+                    latitude: location.lat(),
+                    longitude: location.lng(),
+                    user: {
+                        name: order.users.name,
+                        email: order.users.email
+                    }
+                });
+            } else {
+                res.status(400).json({ error: 'Could not geocode address' });
+            }
         });
     } catch (error) {
-        console.error('Error getting delivery info:', error);
-        res.status(500).json({ error: 'Failed to get delivery information' });
+        console.error('Error in delivery info route:', error);
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
 
-// Update delivery location
-router.post('/orders/:orderId/update-location', isAdmin, async (req, res) => {
+// Update location route
+router.post('/orders/:orderId/update-location', async (req, res) => {
     try {
         const { orderId } = req.params;
         const { latitude, longitude, eta } = req.body;
 
         const { error } = await supabase
-            .from('orders')
+            .from('delivery_info')
             .update({
-                delivery_latitude: latitude,
-                delivery_longitude: longitude,
-                estimated_delivery_time: eta,
-                updated_at: new Date().toISOString()
+                current_latitude: latitude,
+                current_longitude: longitude,
+                estimated_arrival: eta,
+                updated_at: new Date()
             })
-            .eq('id', orderId);
+            .eq('order_id', orderId);
 
         if (error) throw error;
 
         res.json({ success: true });
     } catch (error) {
-        console.error('Error updating delivery location:', error);
-        res.status(500).json({ error: 'Failed to update delivery location' });
+        console.error('Error updating location:', error);
+        res.status(500).json({ error: 'Failed to update location' });
+    }
+});
+
+// Debug route to check orders data
+router.get('/debug/orders', async (req, res) => {
+    try {
+        const { data: orders, error } = await supabase
+            .from('orders')
+            .select('*');
+
+        if (error) throw error;
+
+        res.json({
+            count: orders.length,
+            orders: orders
+        });
+    } catch (error) {
+        res.status(500).json({
+            error: error.message,
+            stack: error.stack
+        });
     }
 });
 

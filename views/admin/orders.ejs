@@ -164,9 +164,17 @@
     </div>
 
     <script>
+        function formatCurrency(amount) {
+            return amount ? amount.toFixed(2) : '0.00';
+        }
+
         function showOrderDetails(orderJson) {
             try {
                 const order = JSON.parse(orderJson);
+                if (!order || !order.users) {
+                    throw new Error('Invalid order data');
+                }
+
                 const modal = document.getElementById('orderModal');
                 const overlay = document.getElementById('orderOverlay');
                 
@@ -213,22 +221,25 @@
                             <div>
                                 <h4 class="font-semibold text-gray-800 mb-4">Items</h4>
                                 <div class="space-y-4">
-                                    ${order.order_items.map(item => `
-                                        <div class="flex items-center py-2 border-b">
-                                            <img src="${item.vegetables.image_url}" 
-                                                 alt="${item.vegetables.name}"
-                                                 class="w-16 h-16 object-cover rounded-lg">
-                                            <div class="ml-4 flex-grow">
-                                                <div class="font-medium">${item.vegetables.name}</div>
-                                                <div class="text-sm text-gray-500">
-                                                    ${item.quantity} × ₹${item.price.toFixed(2)}
+                                    ${(order.order_items || []).map(item => {
+                                        const veg = item.vegetables || {};
+                                        return `
+                                            <div class="flex items-center py-2 border-b">
+                                                <img src="${veg.image_url || '/images/placeholder.jpg'}" 
+                                                     alt="${veg.name || 'Product'}"
+                                                     class="w-16 h-16 object-cover rounded-lg">
+                                                <div class="ml-4 flex-grow">
+                                                    <div class="font-medium">${veg.name || 'Unknown Product'}</div>
+                                                    <div class="text-sm text-gray-500">
+                                                        ${item.quantity || 0} × ₹${formatCurrency(item.price)}
+                                                    </div>
+                                                </div>
+                                                <div class="text-right font-medium">
+                                                    ₹${formatCurrency((item.quantity || 0) * (item.price || 0))}
                                                 </div>
                                             </div>
-                                            <div class="text-right font-medium">
-                                                ₹${(item.quantity * item.price).toFixed(2)}
-                                            </div>
-                                        </div>
-                                    `).join('')}
+                                        `;
+                                    }).join('')}
                                 </div>
                             </div>
 
@@ -269,14 +280,6 @@
                                 <div class="grid grid-cols-2 gap-4">
                                     <div>
                                         <p class="text-sm text-gray-600">Delivery Address:</p>
-                                        <p class="font-medium">
-                                            ${order.users.address || 'No address provided'}<br>
-                                            ${order.users.city || ''}, ${order.users.state || ''}<br>
-                                            ${order.users.pincode || ''}
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <p class="text-sm text-gray-600">Estimated Time:</p>
                                         <p class="font-medium" id="eta-${order.id}">Calculating...</p>
                                     </div>
                                 </div>
@@ -385,7 +388,9 @@
     </script>
 
     <!-- Add this before closing body tag -->
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDBRvts55sYzQ0hcPcF0qp6ApnwW-hHmYo&libraries=places"></script>
+    <script async
+        src="https://maps.googleapis.com/maps/api/js?key=<%= process.env.GOOGLE_MAPS_API_KEY %>&libraries=places,marker&v=beta">
+    </script>
     <script>
     let deliveryMarkers = {};
     let deliveryMaps = {};
@@ -398,23 +403,30 @@
         }
 
         try {
-            // Get delivery address from the database
-            const response = await fetch(`/admin/orders/${orderId}/delivery-info`);
-            const deliveryInfo = await response.json();
-            
-            if (!deliveryInfo.address) {
-                alert('Delivery address not found');
-                return;
+            // Fetch order details
+            const orderResponse = await fetch(`/admin/orders/${orderId}`);
+            const order = await orderResponse.json();
+
+            if (!order || !order.users) {
+                throw new Error('Invalid order data');
+            }
+
+            // Fetch user data
+            const userResponse = await fetch(`/admin/users/${order.users.id}`);
+            const user = await userResponse.json();
+
+            if (!user || !user.address) {
+                throw new Error('User data or address not found');
             }
 
             // Initialize map if not already initialized
             if (!deliveryMaps[orderId]) {
-                initializeMap(orderId, deliveryInfo);
+                initializeMap(orderId, user);
             }
 
             // Start tracking current location
             watchIds[orderId] = navigator.geolocation.watchPosition(
-                (position) => updateDeliveryLocation(position, orderId, deliveryInfo),
+                (position) => updateDeliveryLocation(position, orderId, user),
                 (error) => console.error('Error getting location:', error),
                 { enableHighAccuracy: true }
             );
@@ -432,49 +444,58 @@
         }
     }
 
-    function initializeMap(orderId, deliveryInfo) {
+    function initializeMap(orderId, user) {
         const mapElement = document.getElementById(`map-${orderId}`);
-        const deliveryLocation = { 
-            lat: deliveryInfo.latitude, 
-            lng: deliveryInfo.longitude 
-        };
+        if (!mapElement) return;
 
         const map = new google.maps.Map(mapElement, {
-            zoom: 13,
-            center: deliveryLocation
+            zoom: 12,
+            center: { 
+                lat: user.latitude || 13.0827,
+                lng: user.longitude || 80.2707
+            },
+            mapTypeId: google.maps.MapTypeId.ROADMAP,
+            mapTypeControl: true,
+            streetViewControl: true,
+            fullscreenControl: true
         });
 
+        // Create markers and initialize tracking
         // Add delivery location marker
         new google.maps.Marker({
-            position: deliveryLocation,
+            position: { lat: user.latitude, lng: user.longitude },
             map: map,
             icon: {
                 url: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png',
-                labelOrigin: new google.maps.Point(16, 40)
             },
-            label: {
-                text: 'Delivery Location',
-                color: '#C53030'
-            }
+            title: 'Delivery Location'
         });
 
-        // Add delivery person marker
+        // Add delivery person marker (initially at the center)
         deliveryMarkers[orderId] = new google.maps.Marker({
+            position: map.getCenter(),
             map: map,
             icon: {
                 url: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png',
-                labelOrigin: new google.maps.Point(16, 40)
             },
-            label: {
-                text: 'Delivery Person',
-                color: '#2B6CB0'
-            }
+            title: 'Delivery Person'
         });
 
+        // Update delivery address in the UI
+        const addressElement = document.querySelector(`#map-${orderId} + .grid .font-medium`);
+        if (addressElement) {
+            addressElement.innerHTML = `
+                ${user.address}<br>
+                ${user.city || ''}, ${user.state || ''}<br>
+                ${user.pincode || ''}
+            `;
+        }
+
         deliveryMaps[orderId] = map;
+        startDelivery(orderId);
     }
 
-    async function updateDeliveryLocation(position, orderId, deliveryInfo) {
+    async function updateDeliveryLocation(position, orderId, user) {
         const currentLocation = {
             lat: position.coords.latitude,
             lng: position.coords.longitude
@@ -486,7 +507,7 @@
         // Center map to show both points
         const bounds = new google.maps.LatLngBounds();
         bounds.extend(currentLocation);
-        bounds.extend({ lat: deliveryInfo.latitude, lng: deliveryInfo.longitude });
+        bounds.extend({ lat: user.latitude, lng: user.longitude });
         deliveryMaps[orderId].fitBounds(bounds);
 
         // Calculate and update ETA
@@ -494,7 +515,7 @@
             const directionsService = new google.maps.DirectionsService();
             const result = await directionsService.route({
                 origin: currentLocation,
-                destination: { lat: deliveryInfo.latitude, lng: deliveryInfo.longitude },
+                destination: { lat: user.latitude, lng: user.longitude },
                 travelMode: google.maps.TravelMode.DRIVING
             });
 

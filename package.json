@@ -30,9 +30,13 @@
     "pg": "^8.11.3",
     "qrcode": "^1.5.4",
     "razorpay": "^2.9.2",
-    "speakeasy": "^2.0.0"
+    "speakeasy": "^2.0.0",
+    "@googlemaps/js-api-loader": "^1.16.2",
+    "@googlemaps/markerclusterer": "^2.5.3",
+    "@react-google-maps/api": "^2.19.3"
   },
   "devDependencies": {
-    "nodemon": "^3.0.3"
+    "nodemon": "^3.0.3",
+    "@types/google.maps": "^3.55.3"
   }
 }

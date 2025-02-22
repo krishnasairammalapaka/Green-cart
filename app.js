@@ -101,10 +101,10 @@ app.get('/user/profile', isAuthenticated, async (req, res) => {
 
 // Global error handler
 app.use((err, req, res, next) => {
-    console.error('Global error:', err);
-    res.status(500).render('error', { 
-        message: err.message || 'An unexpected error occurred',
-        error: req.app.get('env') === 'development' ? err : {}
+    console.error(err.stack);
+    res.status(500).render('error', {
+        message: 'Something broke!',
+        error: process.env.NODE_ENV === 'development' ? err : {}
     });
 });
 
