@@ -7,6 +7,8 @@ const { supabase } = require('./config/supabase');
 const passport = require('./config/passport-google');
 const PDFDocument = require('pdfkit');
 const fs = require('fs');
+const authRoutes = require('./routes/authRoutes');
+const adminRoutes = require('./routes/admin');
 
 const app = express();
 
@@ -32,7 +34,7 @@ app.use(passport.session());
 
 // Set view engine
 app.set('view engine', 'ejs');
-app.set('views', './views');
+app.set('views', path.join(__dirname, 'views'));
 
 // Middleware to make session available to all views
 app.use((req, res, next) => {
@@ -70,10 +72,13 @@ const indexRouter = require('./routes/index');
 // Routes - Add index router first
 app.use('/', indexRouter);  // This should be the first route
 
+// Register the auth routes
+app.use('/auth', authRoutes);
+
 // Other routes
 const { router: authRouter } = require('./routes/auth');
 app.use('/auth', authRouter);  // This mounts all auth routes under /auth
-app.use('/admin', require('./routes/admin'));
+app.use('/admin', adminRoutes);  // This now handles its own auth
 app.use('/user', require('./routes/user'));
 app.use('/farmer', require('./routes/farmer'));
 app.use('/', require('./routes/pages'));
