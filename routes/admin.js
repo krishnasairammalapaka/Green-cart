@@ -1,13 +1,18 @@
 const express = require('express');
 const router = express.Router();
 const { supabase } = require('../config/supabase');
+<<<<<<< HEAD
 const { Pool } = require('pg');
+=======
+const bcrypt = require('bcrypt');
+>>>>>>> deba7f6 (added the gemni API key for the catbot)
 
 // Middleware to check if user is admin
 const isAdmin = (req, res, next) => {
     if (req.session.user && req.session.user.role === 'admin') {
         next();
     } else {
+<<<<<<< HEAD
         res.redirect('/');
     }
 };
@@ -21,6 +26,89 @@ const pool = new Pool({
     ssl: {
         rejectUnauthorized: false
     }
+=======
+        res.status(403).redirect('/admin/login');  // Redirect to admin login instead of auth/login
+    }
+};
+
+// Admin login route
+router.post('/login', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        
+        if (!email || !password) {
+            return res.status(400).json({ error: 'Email and password are required' });
+        }
+
+        // Check admin credentials and role
+        const { data: admin, error } = await supabase
+            .from('admins')
+            .select('*')
+            .eq('email', email.toLowerCase())
+            .eq('role', 'admin')  // Explicitly check for admin role
+            .single();
+
+        if (error) {
+            console.error('Admin lookup error:', error);
+            return res.status(401).json({ error: 'Authentication failed' });
+        }
+
+        if (!admin) {
+            return res.status(401).json({ error: 'Admin not found' });
+        }
+
+        // For debugging (remove in production)
+        console.log('Found admin:', { email: admin.email, role: admin.role });
+
+        // Verify password
+        if (password !== admin.password) {
+            return res.status(401).json({ error: 'Invalid credentials' });
+        }
+
+        // Set session with role
+        req.session.user = {
+            id: admin.id,
+            email: admin.email,
+            name: admin.name,
+            role: admin.role  // Make sure role is included in session
+        };
+
+        // If the request accepts HTML, redirect to dashboard
+        if (req.accepts('html')) {
+            return res.redirect('/admin/dashboard');
+        }
+
+        // Otherwise return JSON response
+        res.json({ 
+            success: true, 
+            admin: { 
+                email: admin.email, 
+                role: admin.role 
+            } 
+        });
+    } catch (error) {
+        console.error('Admin login error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Add a test route to check admin session
+router.get('/check-session', (req, res) => {
+    res.json({
+        isLoggedIn: !!req.session.user,
+        user: req.session.user
+    });
+});
+
+// Protected admin routes
+router.get('/dashboard', isAdmin, (req, res) => {
+    res.render('admin/dashboard');
+});
+
+// Add this at the beginning of your routes
+router.get('/', isAdmin, (req, res) => {
+    res.redirect('/admin/dashboard');
+>>>>>>> deba7f6 (added the gemni API key for the catbot)
 });
 
 // Route to display farmer info page with data
@@ -168,6 +256,7 @@ router.delete('/vegetables/:id', async (req, res) => {
     }
 });
 
+<<<<<<< HEAD
 // Admin routes...
 router.get('/dashboard', async (req, res) => {
     try {
@@ -191,7 +280,14 @@ router.get('/dashboard', async (req, res) => {
             error: 'Failed to load dashboard data',
             currentPage: 'dashboard'
         });
+=======
+// Add this route at the beginning of your routes
+router.get('/login', (req, res) => {
+    if (req.session.user && req.session.user.role === 'admin') {
+        return res.redirect('/admin/dashboard');
+>>>>>>> deba7f6 (added the gemni API key for the catbot)
     }
+    res.render('admin/login');
 });
 
 // Weather route

@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Profile - GreenScart</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-gray-50">
+    <!-- Include Sidebar -->
+    <%- include('../partials/user-sidebar') %>
+
+    <!-- Main Content -->
+    <div class="ml-64 min-h-screen p-6">
+        <!-- Profile Container -->
+        <div class="max-w-4xl mx-auto bg-white rounded-xl shadow-md overflow-hidden">
+            <!-- Header Section -->
+            <div class="bg-green-600 p-6">
+                <div class="flex items-center space-x-4">
+                    <div class="h-20 w-20 rounded-full bg-white flex items-center justify-center">
+                        <span class="text-3xl text-green-600 font-bold">
+                            <%= user.name.charAt(0).toUpperCase() %>
+                        </span>
+                    </div>
+                    <div class="text-white">
+                        <h1 class="text-2xl font-bold"><%= user.name %></h1>
+                        <p class="text-green-100">Member since <%= new Date(user.created_at).toLocaleDateString() %></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Profile Information -->
+            <div class="p-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Personal Information -->
+                    <div class="bg-gray-50 p-6 rounded-lg">
+                        <h2 class="text-xl font-semibold text-gray-800 mb-4">Personal Information</h2>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="text-sm text-gray-500">Full Name</label>
+                                <p class="text-gray-800 font-medium"><%= user.name %></p>
+                            </div>
+                            <div>
+                                <label class="text-sm text-gray-500">Email Address</label>
+                                <p class="text-gray-800 font-medium"><%= user.email %></p>
+                            </div>
+                            <div>
+                                <label class="text-sm text-gray-500">Phone Number</label>
+                                <p class="text-gray-800 font-medium"><%= user.phone || 'Not provided' %></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Address Information -->
+                    <div class="bg-gray-50 p-6 rounded-lg">
+                        <h2 class="text-xl font-semibold text-gray-800 mb-4">Delivery Address</h2>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="text-sm text-gray-500">Street Address</label>
+                                <p class="text-gray-800 font-medium"><%= user.address || 'Not provided' %></p>
+                            </div>
+                            <div>
+                                <label class="text-sm text-gray-500">City</label>
+                                <p class="text-gray-800 font-medium"><%= user.city || 'Not provided' %></p>
+                            </div>
+                            <div>
+                                <label class="text-sm text-gray-500">State</label>
+                                <p class="text-gray-800 font-medium"><%= user.state || 'Not provided' %></p>
+                            </div>
+                            <div>
+                                <label class="text-sm text-gray-500">Pincode</label>
+                                <p class="text-gray-800 font-medium"><%= user.pincode || 'Not provided' %></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Account Actions -->
+                <div class="mt-8 flex justify-end space-x-4">
+                    <button onclick="window.location.href='/user/edit-profile'" 
+                            class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                        Edit Profile
+                    </button>
+                    <button onclick="window.location.href='/user/dashboard'" 
+                            class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors">
+                        Back to Dashboard
+                    </button>
+                </div>
+            </div>
+
+            <!-- Order Summary -->
+            <div class="p-6 border-t">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4">Account Summary</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="bg-green-50 p-4 rounded-lg">
+                        <h3 class="text-sm text-gray-500">Total Orders</h3>
+                        <p class="text-2xl font-bold text-green-600"><%= user.total_orders || 0 %></p>
+                    </div>
+                    <div class="bg-green-50 p-4 rounded-lg">
+                        <h3 class="text-sm text-gray-500">Active Orders</h3>
+                        <p class="text-2xl font-bold text-green-600"><%= user.active_orders || 0 %></p>
+                    </div>
+                    <div class="bg-green-50 p-4 rounded-lg">
+                        <h3 class="text-sm text-gray-500">Saved Addresses</h3>
+                        <p class="text-2xl font-bold text-green-600"><%= user.saved_addresses || 1 %></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html> 

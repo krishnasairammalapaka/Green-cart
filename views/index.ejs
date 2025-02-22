@@ -5,16 +5,36 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Greens Cart</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .logo-container {
+            width: 280px;  /* Increased width */
+            height: 280px; /* Increased height */
+            margin: 0 auto;
+            transition: transform 0.3s ease;
+            padding: 20px;  /* Added padding */
+        }
+        
+        .logo-container:hover {
+            transform: scale(1.05);
+        }
+
+        .logo-image {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
+        }
+    </style>
 </head>
 <body class="bg-gradient-to-br from-green-50 to-green-100 min-h-screen flex items-center justify-center">
-    <div class="bg-white p-8 rounded-xl shadow-2xl w-96 transform transition-all duration-300 hover:scale-105">
+    <div class="bg-white p-8 rounded-xl shadow-2xl w-[450px] transform transition-all duration-300 hover:scale-105">
         <!-- Logo and Title -->
         <div class="text-center mb-8">
-            <div class="w-16 h-16 bg-green-500 rounded-full mx-auto mb-4 flex items-center justify-center">
-                <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                          d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                </svg>
+            <div class="logo-container mb-4">
+                <img src="public/images/greenscart-logo.png" 
+                     alt="GreenScart Logo" 
+                     class="logo-image"
+                >
             </div>
             <h2 class="text-3xl font-bold text-gray-800">Welcome Back</h2>
             <p class="text-gray-500 mt-2">Login to access your Greens Cart account</p>

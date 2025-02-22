@@ -4,6 +4,11 @@ const { supabase } = require('../config/supabase');
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const PDFDocument = require('pdfkit');
+<<<<<<< HEAD
+=======
+const fs = require('fs');
+const path = require('path');
+>>>>>>> deba7f6 (added the gemni API key for the catbot)
 
 // Middleware to check if user is logged in
 const isAuthenticated = (req, res, next) => {
@@ -28,6 +33,17 @@ async function getOrderCount(userId) {
         .eq('user_id', userId);
     return count || 0;
 }
+
+// Make sure these directories exist
+const ensureDirectoryExists = (directory) => {
+    if (!fs.existsSync(directory)) {
+        fs.mkdirSync(directory, { recursive: true });
+    }
+};
+
+// Add this before your routes
+ensureDirectoryExists(path.join(__dirname, '../public/pdfs'));
+ensureDirectoryExists(path.join(__dirname, '../public/images'));
 
 // Route to display marketplace
 router.get('/marketplace', isAuthenticated, async (req, res) => {
@@ -203,16 +219,24 @@ router.delete('/cart/remove/:id', isAuthenticated, async (req, res) => {
     }
 });
 
-// Route to display orders
-router.get('/orders', isAuthenticated, async (req, res) => {
+// Orders route
+router.get('/orders', isAuthenticated, async (req, res, next) => {
     try {
+<<<<<<< HEAD
+=======
+        // Fetch orders with their items and vegetable details
+>>>>>>> deba7f6 (added the gemni API key for the catbot)
         const { data: orders, error } = await supabase
             .from('orders')
             .select(`
                 *,
                 order_items (
                     *,
+<<<<<<< HEAD
                     vegetables (*)
+=======
+                    vegetables:vegetable_id (*)
+>>>>>>> deba7f6 (added the gemni API key for the catbot)
                 )
             `)
             .eq('user_id', req.session.user.id)
@@ -221,13 +245,18 @@ router.get('/orders', isAuthenticated, async (req, res) => {
         if (error) throw error;
 
         res.render('user/orders', {
+<<<<<<< HEAD
             orders,
             orderCount: orders.length,
             user: req.session.user,
+=======
+            orders: orders || [],
+>>>>>>> deba7f6 (added the gemni API key for the catbot)
             currentPage: 'orders'
         });
     } catch (error) {
         console.error('Error fetching orders:', error);
+<<<<<<< HEAD
         res.render('user/orders', {
             orders: [],
             orderCount: 0,
@@ -235,6 +264,9 @@ router.get('/orders', isAuthenticated, async (req, res) => {
             user: req.session.user,
             currentPage: 'orders'
         });
+=======
+        next(error);
+>>>>>>> deba7f6 (added the gemni API key for the catbot)
     }
 });
 
@@ -259,17 +291,40 @@ router.post('/create-order', isAuthenticated, async (req, res) => {
         const subtotal = cartItems.reduce((sum, item) => {
             return sum + (item.vegetables.price * item.quantity);
         }, 0);
+<<<<<<< HEAD
         const deliveryFee = 50;
         const tax = subtotal * 0.05;
         const total = Math.round((subtotal + deliveryFee + tax) * 100); // Convert to paise
+=======
+        
+        const deliveryFee = 50.00; // Fixed delivery fee
+        const tax = subtotal * 0.05;  // 5% tax
+        const total = subtotal + deliveryFee + tax;
+
+        // Create Razorpay order
+        const razorpayOrder = await razorpay.orders.create({
+            amount: Math.round(total * 100), // Convert to paise
+            currency: 'INR',
+            receipt: `order_${Date.now()}`
+        });
+>>>>>>> deba7f6 (added the gemni API key for the catbot)
 
         // Create order in database
         const { data: order, error: orderError } = await supabase
             .from('orders')
             .insert([{
                 user_id: req.session.user.id,
+<<<<<<< HEAD
                 total_amount: total / 100, // Store in rupees
                 status: 'pending'
+=======
+                total_amount: total,
+                delivery_fee: deliveryFee,  // Add delivery fee
+                subtotal: subtotal,         // Add subtotal
+                tax: tax,                   // Add tax
+                status: 'pending',
+                razorpay_order_id: razorpayOrder.id
+>>>>>>> deba7f6 (added the gemni API key for the catbot)
             }])
             .select()
             .single();
@@ -290,6 +345,7 @@ router.post('/create-order', isAuthenticated, async (req, res) => {
 
         if (itemsError) throw itemsError;
 
+<<<<<<< HEAD
         // Create Razorpay order
         const razorpayOrder = await razorpay.orders.create({
             amount: total,
@@ -303,12 +359,29 @@ router.post('/create-order', isAuthenticated, async (req, res) => {
             .from('orders')
             .update({ razorpay_order_id: razorpayOrder.id })
             .eq('id', order.id);
+=======
+        // Clear cart after successful order creation
+        const { error: clearCartError } = await supabase
+            .from('cart_items')
+            .delete()
+            .eq('user_id', req.session.user.id);
+
+        if (clearCartError) throw clearCartError;
+>>>>>>> deba7f6 (added the gemni API key for the catbot)
 
         res.json({
             orderId: order.id,
             razorpayOrderId: razorpayOrder.id,
+<<<<<<< HEAD
             amount: total,
             currency: 'INR'
+=======
+            amount: razorpayOrder.amount,
+            subtotal,
+            deliveryFee,
+            tax,
+            total
+>>>>>>> deba7f6 (added the gemni API key for the catbot)
         });
     } catch (error) {
         console.error('Error creating order:', error);
@@ -361,16 +434,22 @@ router.post('/verify-payment', isAuthenticated, async (req, res) => {
     }
 });
 
+<<<<<<< HEAD
 // Add this route to generate and download order receipt
 router.get('/order-receipt/:orderId', isAuthenticated, async (req, res) => {
     try {
         const { orderId } = req.params;
 
+=======
+router.get('/orders/:orderId/pdf', isAuthenticated, async (req, res) => {
+    try {
+>>>>>>> deba7f6 (added the gemni API key for the catbot)
         // Fetch order details
         const { data: order, error } = await supabase
             .from('orders')
             .select(`
                 *,
+<<<<<<< HEAD
                 order_items (
                     *,
                     vegetables (*)
@@ -410,6 +489,123 @@ router.get('/order-receipt/:orderId', isAuthenticated, async (req, res) => {
     } catch (error) {
         console.error('Error generating receipt:', error);
         res.status(500).send('Failed to generate receipt');
+=======
+                items:order_items (
+                    *,
+                    vegetables:vegetable_id (*)
+                )
+            `)
+            .eq('id', req.params.orderId)
+            .eq('user_id', req.session.user.id)
+            .single();
+
+        if (error || !order) {
+            throw new Error('Order not found');
+        }
+
+        // Create PDF document
+        const doc = new PDFDocument({
+            margin: 50,
+            size: 'A4',
+            bufferPages: true
+        });
+
+        // Create a write stream for the PDF
+        const pdfPath = path.join(__dirname, `../public/pdfs/order-${order.id.slice(-8)}.pdf`);
+        const writeStream = fs.createWriteStream(pdfPath);
+
+        // Pipe the PDF to both the file and the response
+        doc.pipe(writeStream);
+        doc.pipe(res);
+
+        // Set response headers
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename=order-${order.id.slice(-8)}.pdf`);
+
+        try {
+            // Add logo if exists
+            const logoPath = path.join(__dirname, '../public/images/greenscart-logo.png');
+            if (fs.existsSync(logoPath)) {
+                doc.image(logoPath, {
+                    fit: [150, 150],
+                    align: 'center'
+                });
+            }
+
+            // Add company logo/header
+            doc
+                .fontSize(20)
+                .text('GreenScart', { align: 'center' })
+                .fontSize(16)
+                .text('Order Acknowledgment', { align: 'center' })
+                .moveDown(2);
+
+            // Add order information
+            doc
+                .fontSize(12)
+                .text('Order Information', { underline: true })
+                .moveDown(0.5)
+                .text(`Order ID: #${order.id.slice(-8)}`)
+                .text(`Order Date: ${new Date(order.created_at).toLocaleString()}`)
+                .text(`Status: ${order.status.charAt(0).toUpperCase() + order.status.slice(1)}`)
+                .moveDown(1.5);
+
+            // Add items table header
+            doc
+                .fontSize(14)
+                .text('Order Items', { underline: true })
+                .moveDown(0.5);
+
+            // Add items with proper formatting
+            order.items.forEach((item, index) => {
+                doc
+                    .fontSize(12)
+                    .text(`${index + 1}. ${item.vegetables.name}`, { continued: true })
+                    .text(`   Quantity: ${item.quantity}`, { continued: true })
+                    .text(`   Price: ₹${item.price.toFixed(2)}`, { continued: true })
+                    .text(`   Total: ₹${(item.quantity * item.price).toFixed(2)}`)
+                    .moveDown(0.5);
+            });
+
+            // Add order summary
+            doc
+                .moveDown(1.5)
+                .fontSize(12)
+                .text('Order Summary', { underline: true })
+                .moveDown(0.5)
+                .text(`Subtotal: ₹${(order.total_amount - order.delivery_fee).toFixed(2)}`)
+                .text(`Delivery Fee: ₹${order.delivery_fee.toFixed(2)}`)
+                .moveDown(0.5)
+                .fontSize(14)
+                .text(`Total Amount: ₹${order.total_amount.toFixed(2)}`, { bold: true })
+                .moveDown(2);
+
+            // Add footer
+            doc
+                .fontSize(10)
+                .text('Thank you for shopping with GreenScart!', { align: 'center', color: 'green' })
+                .text(`Generated on: ${new Date().toLocaleString()}`, { align: 'center' });
+
+            // End the document
+            doc.end();
+
+            // Clean up the temporary file after sending
+            writeStream.on('finish', () => {
+                fs.unlink(pdfPath, (err) => {
+                    if (err) console.error('Error deleting temporary PDF:', err);
+                });
+            });
+
+        } catch (pdfError) {
+            console.error('Error generating PDF content:', pdfError);
+            doc.end(); // Make sure to end the document even if there's an error
+            res.status(500).send('Error generating PDF content');
+        }
+
+    } catch (error) {
+        console.error('Error fetching order data:', error);
+        res.status(500).send('Failed to generate PDF');
+>>>>>>> deba7f6 (added the gemni API key for the catbot)
     }
 });
 
