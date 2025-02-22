@@ -181,34 +181,58 @@ async function debugOrderData() {
 // Orders Management
 router.get('/orders', adminAuth, async (req, res) => {
     try {
-        // First fetch orders directly from orders table
-        const { data: orders, error } = await supabase
+        // First fetch orders
+        const { data: orders, error: ordersError } = await supabase
             .from('orders')
             .select('*')
             .order('created_at', { ascending: false });
 
-        if (error) {
-            console.error('Orders fetch error:', error);
-            throw error;
+        if (ordersError) {
+            console.error('Orders fetch error:', ordersError);
+            throw ordersError;
         }
 
-        // Log the raw orders data to see what we're getting
-        console.log('Raw orders data:', orders);
+        // Get unique user IDs from orders
+        const userIds = [...new Set(orders.map(order => order.user_id))];
 
-        // Process the orders data to match the template format
-        const processedOrders = orders.map(order => ({
-            _id: order.id,
-            customerName: order.customer_name || 'Unknown', // Use the direct field from orders table
-            products: [{ 
-                name: order.product_name || 'Product',  // Use the direct field from orders table
-                quantity: order.quantity || 1
-            }],
-            totalAmount: order.total_amount || 0,
-            status: order.status || 'Pending',
-            orderDate: order.created_at,
-            address: order.delivery_address || '',
-            phone: order.phone_number || ''
-        }));
+        // Fetch user details for these orders
+        const { data: users, error: usersError } = await supabase
+            .from('users')
+            .select('*')
+            .in('id', userIds);
+
+        if (usersError) {
+            console.error('Users fetch error:', usersError);
+            throw usersError;
+        }
+
+        // Create a map of user details for quick lookup
+        const userMap = users.reduce((acc, user) => {
+            acc[user.id] = user;
+            return acc;
+        }, {});
+
+        // Process the orders data with user details
+        const processedOrders = orders.map(order => {
+            const user = userMap[order.user_id] || {};
+            return {
+                _id: order.id,
+                customerName: user.name || order.customer_name || 'Unknown',
+                customerEmail: user.email || order.email || 'N/A',
+                products: [{
+                    name: order.item_name || 'Product',
+                    quantity: order.quantity || 1
+                }],
+                totalAmount: order.amount || 0,
+                status: order.status || 'Pending',
+                orderDate: order.created_at,
+                address: user.address || order.address || 'N/A',
+                phone: user.phone_number || order.phone || 'N/A',
+                userId: order.user_id
+            };
+        });
+
+        console.log('Processed orders:', processedOrders);
 
         res.render('admin/orders', { 
             orders: processedOrders,
@@ -246,73 +270,43 @@ router.post('/orders/:id/status', async (req, res) => {
 });
 
 // Get single order details
-router.get('/orders/:id', async (req, res) => {
+router.get('/orders/:id/details', async (req, res) => {
     try {
-        console.log('Fetching order details for ID:', req.params.id);
-
-        // Get order with user details in a single query
+        // Fetch order details
         const { data: order, error: orderError } = await supabase
             .from('orders')
-            .select(`
-                *,
-                users!orders_user_id_fkey (
-                    id,
-                    name,
-                    email,
-                    phone,
-                    address,
-                    city,
-                    state,
-                    pincode,
-                    latitude,
-                    longitude
-                ),
-                order_items (
-                    id,
-                    quantity,
-                    price,
-                    vegetables!order_items_vegetable_id_fkey (
-                        id,
-                        name,
-                        image_url,
-                        unit
-                    )
-                )
-            `)
+            .select('*')
             .eq('id', req.params.id)
             .single();
 
-        if (orderError) {
-            console.error('Order fetch error:', orderError);
-            throw orderError;
+        if (orderError) throw orderError;
+
+        // Fetch user details if user_id exists
+        let user = {};
+        if (order.user_id) {
+            const { data: userData, error: userError } = await supabase
+                .from('users')
+                .select('*')
+                .eq('id', order.user_id)
+                .single();
+
+            if (!userError && userData) {
+                user = userData;
+            }
         }
 
-        // Calculate order summary
-        const subtotal = order.order_items.reduce((sum, item) => 
-            sum + (item.quantity * item.price), 0);
-
-        // Format the order details
-        const orderDetails = {
+        // Combine order and user data
+        res.json({
             ...order,
-            order_items: order.order_items.map(item => ({
-                ...item,
-                vegetables: item.vegetables // Keep the structure consistent
-            })),
-            subtotal: subtotal,
-            delivery_fee: 50,
-            tax: subtotal * 0.05,
-            total: subtotal + 50 + (subtotal * 0.05)
-        };
-
-        console.log('Sending order details:', orderDetails);
-        res.json(orderDetails);
+            customerName: user.name || order.customer_name || 'Unknown',
+            customerEmail: user.email || order.email || 'N/A',
+            phone: user.phone_number || order.phone || 'N/A',
+            address: user.address || order.address || 'N/A'
+        });
 
     } catch (error) {
-        console.error('Get order details error:', error);
-        res.status(500).json({ 
-            error: 'Failed to fetch order details',
-            details: error.message 
-        });
+        console.error('Error fetching order details:', error);
+        res.status(500).json({ error: 'Failed to fetch order details' });
     }
 });
 
