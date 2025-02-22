@@ -149,32 +149,220 @@ router.get('/vegetables', async (req, res) => {
     }
 });
 
-// Orders Management
-router.get('/orders', async (req, res) => {
+// Add this helper function at the top of your file
+async function debugOrderData() {
     try {
+        // Check orders table
+        const { data: orders, error: ordersError } = await supabase
+            .from('orders')
+            .select('*');
+        console.log('Orders in database:', orders);
+        if (ordersError) console.error('Orders error:', ordersError);
+
+        // Check users table
+        const { data: users, error: usersError } = await supabase
+            .from('users')
+            .select('*');
+        console.log('Users in database:', users);
+        if (usersError) console.error('Users error:', usersError);
+
+        // Check order_items table
+        const { data: orderItems, error: itemsError } = await supabase
+            .from('order_items')
+            .select('*');
+        console.log('Order items in database:', orderItems);
+        if (itemsError) console.error('Order items error:', itemsError);
+
+    } catch (error) {
+        console.error('Debug error:', error);
+    }
+}
+
+// Orders Management
+router.get('/orders', adminAuth, async (req, res) => {
+    try {
+        // First fetch orders directly from orders table
         const { data: orders, error } = await supabase
             .from('orders')
-            .select(`
-                *,
-                users (*),
-                order_items (
-                    *,
-                    vegetables (*)
-                )
-            `);
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            console.error('Orders fetch error:', error);
+            throw error;
+        }
+
+        // Log the raw orders data to see what we're getting
+        console.log('Raw orders data:', orders);
+
+        // Process the orders data to match the template format
+        const processedOrders = orders.map(order => ({
+            _id: order.id,
+            customerName: order.customer_name || 'Unknown', // Use the direct field from orders table
+            products: [{ 
+                name: order.product_name || 'Product',  // Use the direct field from orders table
+                quantity: order.quantity || 1
+            }],
+            totalAmount: order.total_amount || 0,
+            status: order.status || 'Pending',
+            orderDate: order.created_at,
+            address: order.delivery_address || '',
+            phone: order.phone_number || ''
+        }));
+
+        res.render('admin/orders', { 
+            orders: processedOrders,
+            currentPage: 'orders'
+        });
+
+    } catch (error) {
+        console.error('Error fetching orders:', error);
+        res.status(500).render('admin/orders', {
+            orders: [],
+            currentPage: 'orders',
+            error: 'Failed to load orders'
+        });
+    }
+});
+
+// Update order status
+router.post('/orders/:id/status', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status } = req.body;
+
+        const { error } = await supabase
+            .from('orders')
+            .update({ status })
+            .eq('id', id);
 
         if (error) throw error;
 
-        res.render('admin/orders', { 
-            orders,
-            currentPage: 'orders'
-        });
+        res.json({ success: true });
     } catch (error) {
-        res.status(500).render('admin/orders', { 
-            orders: [],
-            error: 'Failed to load orders',
-            currentPage: 'orders'
+        console.error('Update order status error:', error);
+        res.status(500).json({ error: 'Failed to update order status' });
+    }
+});
+
+// Get single order details
+router.get('/orders/:id', async (req, res) => {
+    try {
+        console.log('Fetching order details for ID:', req.params.id);
+
+        // Get order with user details in a single query
+        const { data: order, error: orderError } = await supabase
+            .from('orders')
+            .select(`
+                *,
+                users!orders_user_id_fkey (
+                    id,
+                    name,
+                    email,
+                    phone,
+                    address,
+                    city,
+                    state,
+                    pincode,
+                    latitude,
+                    longitude
+                ),
+                order_items (
+                    id,
+                    quantity,
+                    price,
+                    vegetables!order_items_vegetable_id_fkey (
+                        id,
+                        name,
+                        image_url,
+                        unit
+                    )
+                )
+            `)
+            .eq('id', req.params.id)
+            .single();
+
+        if (orderError) {
+            console.error('Order fetch error:', orderError);
+            throw orderError;
+        }
+
+        // Calculate order summary
+        const subtotal = order.order_items.reduce((sum, item) => 
+            sum + (item.quantity * item.price), 0);
+
+        // Format the order details
+        const orderDetails = {
+            ...order,
+            order_items: order.order_items.map(item => ({
+                ...item,
+                vegetables: item.vegetables // Keep the structure consistent
+            })),
+            subtotal: subtotal,
+            delivery_fee: 50,
+            tax: subtotal * 0.05,
+            total: subtotal + 50 + (subtotal * 0.05)
+        };
+
+        console.log('Sending order details:', orderDetails);
+        res.json(orderDetails);
+
+    } catch (error) {
+        console.error('Get order details error:', error);
+        res.status(500).json({ 
+            error: 'Failed to fetch order details',
+            details: error.message 
         });
+    }
+});
+
+// Update delivery tracking
+router.post('/orders/:id/tracking', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { delivery_latitude, delivery_longitude, estimated_delivery_time } = req.body;
+
+        const { error } = await supabase
+            .from('orders')
+            .update({
+                delivery_latitude,
+                delivery_longitude,
+                estimated_delivery_time,
+                status: 'out_for_delivery'
+            })
+            .eq('id', id);
+
+        if (error) throw error;
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Update tracking error:', error);
+        res.status(500).json({ error: 'Failed to update tracking information' });
+    }
+});
+
+// Update order location and ETA
+router.post('/orders/:id/update-location', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { latitude, longitude, eta } = req.body;
+
+        const { error } = await supabase
+            .from('orders')
+            .update({
+                delivery_latitude: latitude,
+                delivery_longitude: longitude,
+                estimated_delivery_time: eta,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', id);
+
+        if (error) throw error;
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Update delivery location error:', error);
+        res.status(500).json({ error: 'Failed to update delivery location' });
     }
 });
 
