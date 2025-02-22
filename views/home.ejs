@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GreenScart - Fresh Vegetables Direct from Farmers</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Add Swiper CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+    <style>
+        .swiper {
+            width: 100%;
+            height: 100vh;
+        }
+        .swiper-slide {
+            background-position: center;
+            background-size: cover;
+        }
+        .slide-content {
+            background: rgba(0, 0, 0, 0.5);
+            height: 100%;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .hero-section {
+            background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('/public/images/vegetables-hero.jpg');
+            background-size: cover;
+            background-position: center;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Navigation Bar -->
+    <nav class="bg-white shadow-lg fixed w-full z-10">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <img src="https://i.ibb.co/mVhHPtm5/greenscart-logo.jpg" 
+                         alt="GreenScart Logo" 
+                         class="h-12 w-auto object-contain rounded-full"
+                    >
+                    <span class="ml-2 text-2xl font-bold text-green-600">GreenScart</span>
+                </div>
+                <div class="flex items-center">
+                    <a href="/login" 
+                       class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                        Login
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section with Carousel -->
+    <div class="swiper mySwiper">
+        <div class="swiper-wrapper">
+            <!-- Slide 1 -->
+            <div class="swiper-slide" style="background-image: url('https://images.unsplash.com/photo-1542838132-92c53300491e?q=80')">
+                <div class="slide-content">
+                    <div class="text-center text-white">
+                        <h1 class="text-5xl font-bold mb-4">Fresh Vegetables Direct from Farmers</h1>
+                        <p class="text-xl mb-8">Supporting local farmers while delivering fresh produce to your doorstep</p>
+                        <a href="/login" class="inline-flex items-center px-6 py-3 border border-transparent text-lg font-medium rounded-md text-green-700 bg-white hover:bg-gray-50">
+                            Get Started
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 2 -->
+            <div class="swiper-slide" style="background-image: url('https://images.unsplash.com/photo-1488459716781-31db52582fe9?q=80')">
+                <div class="slide-content">
+                    <div class="text-center text-white">
+                        <h1 class="text-5xl font-bold mb-4">Farm Fresh Quality</h1>
+                        <p class="text-xl mb-8">Handpicked vegetables from local farms to your table</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 3 -->
+            <div class="swiper-slide" style="background-image: url('https://images.unsplash.com/photo-1595855759920-86582396756c?q=80')">
+                <div class="slide-content">
+                    <div class="text-center text-white">
+                        <h1 class="text-5xl font-bold mb-4">Support Local Farmers</h1>
+                        <p class="text-xl mb-8">Empowering farmers through direct market access</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 4 -->
+            <div class="swiper-slide" style="background-image: url('https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?q=80')">
+                <div class="slide-content">
+                    <div class="text-center text-white">
+                        <h1 class="text-5xl font-bold mb-4">Sustainable Farming</h1>
+                        <p class="text-xl mb-8">Promoting eco-friendly agricultural practices</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="swiper-pagination"></div>
+        <div class="swiper-button-next"></div>
+        <div class="swiper-button-prev"></div>
+    </div>
+
+    <!-- Features Section -->
+    <div class="py-16 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center">
+                <h2 class="text-3xl font-extrabold text-gray-900">Why Choose GreenScart?</h2>
+            </div>
+
+            <div class="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8">
+                <!-- Feature 1 -->
+                <div class="text-center">
+                    <div class="flex items-center justify-center h-16 w-16 rounded-md bg-green-500 text-white mx-auto">
+                        <svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                    </div>
+                    <h3 class="mt-4 text-xl font-medium text-gray-900">Fresh from Farms</h3>
+                    <p class="mt-2 text-gray-500">Vegetables sourced directly from local farmers ensuring freshness and quality</p>
+                </div>
+
+                <!-- Feature 2 -->
+                <div class="text-center">
+                    <div class="flex items-center justify-center h-16 w-16 rounded-md bg-green-500 text-white mx-auto">
+                        <svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="mt-4 text-xl font-medium text-gray-900">Quick Delivery</h3>
+                    <p class="mt-2 text-gray-500">Same day delivery to ensure you get the freshest vegetables</p>
+                </div>
+
+                <!-- Feature 3 -->
+                <div class="text-center">
+                    <div class="flex items-center justify-center h-16 w-16 rounded-md bg-green-500 text-white mx-auto">
+                        <svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="mt-4 text-xl font-medium text-gray-900">Support Farmers</h3>
+                    <p class="mt-2 text-gray-500">Direct farmer-to-consumer model ensuring better returns for farmers</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- About Section -->
+    <div class="py-16 bg-gray-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="lg:text-center">
+                <h2 class="text-3xl font-extrabold text-gray-900">About GreenScart</h2>
+                <p class="mt-4 max-w-2xl text-xl text-gray-500 lg:mx-auto">
+                    GreenScart is a platform connecting local farmers directly with consumers. 
+                    We aim to provide fresh vegetables while ensuring fair prices for both farmers and consumers.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white">
+        <div class="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">Contact Us</h3>
+                    <p>Email: support@greenscart.com</p>
+                    <p>Phone: +91 123 456 7890</p>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">Quick Links</h3>
+                    <ul class="space-y-2">
+                        <li><a href="#" class="hover:text-green-400">About Us</a></li>
+                        <li><a href="#" class="hover:text-green-400">How It Works</a></li>
+                        <li><a href="#" class="hover:text-green-400">FAQs</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">Follow Us</h3>
+                    <div class="flex space-x-4">
+                        <a href="#" class="hover:text-green-400">Facebook</a>
+                        <a href="#" class="hover:text-green-400">Twitter</a>
+                        <a href="#" class="hover:text-green-400">Instagram</a>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-8 pt-8 border-t border-gray-700 text-center">
+                <p>&copy; 2024 GreenScart. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Add Swiper JS -->
+    <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+    <script>
+        const swiper = new Swiper(".mySwiper", {
+            spaceBetween: 30,
+            effect: "fade",
+            centeredSlides: true,
+            autoplay: {
+                delay: 3500,
+                disableOnInteraction: false,
+            },
+            pagination: {
+                el: ".swiper-pagination",
+                clickable: true,
+            },
+            navigation: {
+                nextEl: ".swiper-button-next",
+                prevEl: ".swiper-button-prev",
+            },
+        });
+    </script>
+</body>
+</html> 

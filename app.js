@@ -3,7 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const session = require('express-session');
 const path = require('path');
-const { supabase, pool } = require('./config/supabase');
+const { supabase } = require('./config/supabase');
 const passport = require('passport');
 const PDFDocument = require('pdfkit');
 const fs = require('fs');
@@ -15,16 +15,16 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Set up session middleware before routes
+// Set up session middleware with more secure configuration
 app.use(session({
-<<<<<<< HEAD
-    secret: process.env.JWT_SECRET,
-=======
     secret: process.env.SESSION_SECRET || 'your-secret-key',
->>>>>>> deba7f6 (added the gemni API key for the catbot)
     resave: false,
     saveUninitialized: false,
-    cookie: { secure: false } // set to true if using HTTPS
+    cookie: { 
+        secure: process.env.NODE_ENV === 'production',
+        httpOnly: true,
+        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    }
 }));
 
 app.use(passport.initialize());
@@ -64,14 +64,19 @@ const isAuthenticated = (req, res, next) => {
     }
 };
 
-// Routes
+// Import the index router
+const indexRouter = require('./routes/index');
+
+// Routes - Add index router first
+app.use('/', indexRouter);  // This should be the first route
+
+// Other routes
 const { router: authRouter } = require('./routes/auth');
 app.use('/auth', authRouter);
-app.use('/', require('./routes/pages'));
-const adminRouter = require('./routes/admin');
-app.use('/admin', adminRouter);
+app.use('/admin', require('./routes/admin'));
 app.use('/user', require('./routes/user'));
 app.use('/farmer', require('./routes/farmer'));
+app.use('/', require('./routes/pages'));
 
 // User Profile Route
 app.get('/user/profile', isAuthenticated, async (req, res) => {
@@ -94,44 +99,38 @@ app.get('/user/profile', isAuthenticated, async (req, res) => {
     }
 });
 
-// Error handling middleware
+// Global error handler
 app.use((err, req, res, next) => {
-    console.error(err.stack);
-    
-    // Set locals, only providing error in development
-    res.locals.message = err.message;
-    res.locals.error = req.app.get('env') === 'development' ? err : {};
-
-    // Determine the response format based on the request
-    if (req.accepts('html')) {
-        // Render the error page
-        res.status(err.status || 500);
-        res.render('error', {
-            message: err.message || 'An unexpected error occurred',
-            error: req.app.get('env') === 'development' ? err : {}
-        });
-    } else {
-        // Send JSON response for API requests
-        res.status(err.status || 500).json({
-            error: err.message || 'An unexpected error occurred'
-        });
-    }
+    console.error('Global error:', err);
+    res.status(500).render('error', { 
+        message: err.message || 'An unexpected error occurred',
+        error: req.app.get('env') === 'development' ? err : {}
+    });
 });
 
-// 404 handler
-app.use((req, res, next) => {
-    if (req.accepts('html')) {
-        res.status(404).render('error', {
-            message: 'Page Not Found',
-            error: { status: 404 }
-        });
-    } else {
-        res.status(404).json({ error: 'Not Found' });
-    }
+// Handle 404
+app.use((req, res) => {
+    res.status(404).render('error', { 
+        message: 'Page not found',
+        error: {}
+    });
 });
 
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
+// Improved error handling for server
+const server = app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
+});
+
+server.on('error', (error) => {
+    console.error('Server error:', error);
+});
+
+process.on('uncaughtException', (error) => {
+    console.error('Uncaught Exception:', error);
+});
+
+process.on('unhandledRejection', (error) => {
+    console.error('Unhandled Rejection:', error);
 }); 

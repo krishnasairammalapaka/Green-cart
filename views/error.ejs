@@ -4,28 +4,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Error - Green Cart</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-    <div class="container mt-5">
-        <div class="row justify-content-center">
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-body text-center">
-                        <h1 class="card-title text-danger">
-                            <i class="fas fa-exclamation-triangle"></i> Error
-                        </h1>
-                        <p class="card-text">
-                            <%= message || 'An unexpected error occurred' %>
-                        </p>
-                        <% if (process.env.NODE_ENV === 'development' && error) { %>
-                            <div class="alert alert-danger">
-                                <pre><%= error.stack %></pre>
-                            </div>
-                        <% } %>
-                        <a href="/" class="btn btn-primary">Go to Homepage</a>
-                    </div>
-                </div>
+<body class="bg-gray-100">
+    <div class="min-h-screen flex items-center justify-center">
+        <div class="max-w-md w-full space-y-8 p-8 bg-white rounded-lg shadow">
+            <div>
+                <h1 class="text-center text-3xl font-extrabold text-red-600">
+                    Error
+                </h1>
+                <p class="text-center text-gray-700 mt-4">
+                    <%= message || 'An unexpected error occurred' %>
+                </p>
+                <% if (process.env.NODE_ENV === 'development' && error) { %>
+                    <pre class="mt-4 bg-gray-100 p-4 rounded text-sm text-red-600">
+                        <%= error.stack %>
+                    </pre>
+                <% } %>
             </div>
         </div>
     </div>

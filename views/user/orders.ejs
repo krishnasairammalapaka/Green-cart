@@ -6,16 +6,6 @@
     <title>My Orders - Greens Cart</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-<<<<<<< HEAD
-        .order-details {
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.3s ease-out;
-        }
-        .order-details.expanded {
-            max-height: 2000px;
-            transition: max-height 0.5s ease-in;
-=======
         .order-overlay {
             position: fixed;
             top: 0;
@@ -77,7 +67,6 @@
 
         .order-modal::-webkit-scrollbar-thumb:hover {
             background: #555;
->>>>>>> deba7f6 (added the gemni API key for the catbot)
         }
     </style>
 </head>
@@ -91,26 +80,10 @@
             <div class="mb-8 flex justify-between items-center">
                 <div>
                     <h2 class="text-3xl font-bold text-gray-800">My Orders</h2>
-<<<<<<< HEAD
-                    <p class="text-gray-600 mt-2">View and track your orders</p>
+                    <p class="text-gray-600 mt-2">Track and manage your orders</p>
                 </div>
 
                 <!-- Sorting and Filtering Options -->
-                <div class="flex gap-4">
-                    <select id="orderSort" onchange="sortOrders()" class="px-4 py-2 border rounded-lg">
-                        <option value="date-desc">Latest First</option>
-                        <option value="date-asc">Oldest First</option>
-                        <option value="amount-desc">Amount: High to Low</option>
-                        <option value="amount-asc">Amount: Low to High</option>
-                    </select>
-                    <select id="statusFilter" onchange="filterOrders()" class="px-4 py-2 border rounded-lg">
-                        <option value="all">All Status</option>
-                        <option value="completed">Completed</option>
-                        <option value="pending">Pending</option>
-                    </select>
-=======
-                    <p class="text-gray-600 mt-2">Track and manage your orders</p>
-                </div>
                 <div class="flex space-x-2">
                     <button onclick="filterOrders('all')" 
                             class="filter-btn px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition">
@@ -124,23 +97,11 @@
                             class="filter-btn px-4 py-2 rounded-lg bg-green-100 text-green-800 hover:bg-green-200 transition">
                         Completed
                     </button>
->>>>>>> deba7f6 (added the gemni API key for the catbot)
                 </div>
             </div>
 
             <%- include('../partials/error-message') %>
 
-<<<<<<< HEAD
-            <div id="ordersContainer" class="space-y-6">
-                <% if (orders && orders.length > 0) { %>
-                    <% orders.forEach(order => { %>
-                        <div class="bg-white rounded-lg shadow overflow-hidden order-card" 
-                             data-order-date="<%= new Date(order.created_at).getTime() %>"
-                             data-order-amount="<%= order.total_amount %>"
-                             data-order-status="<%= order.status %>">
-                            <!-- Order Header - Clickable -->
-                            <div class="p-6 cursor-pointer hover:bg-gray-50" onclick="toggleOrderDetails(this)">
-=======
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <% if (orders && orders.length > 0) { %>
                     <% orders.forEach(order => { %>
@@ -148,17 +109,11 @@
                              onclick="showOrderDetails('<%= JSON.stringify(order) %>')"
                              data-status="<%= order.status %>">
                             <div class="p-6">
->>>>>>> deba7f6 (added the gemni API key for the catbot)
                                 <div class="flex justify-between items-start">
                                     <div>
                                         <h3 class="text-lg font-semibold">Order #<%= order.id.slice(-8) %></h3>
                                         <p class="text-sm text-gray-500">
-<<<<<<< HEAD
-                                            <%= new Date(order.created_at).toLocaleString('en-US', { 
-                                                weekday: 'long', 
-=======
                                             <%= new Date(order.created_at).toLocaleDateString('en-US', { 
->>>>>>> deba7f6 (added the gemni API key for the catbot)
                                                 year: 'numeric', 
                                                 month: 'long', 
                                                 day: 'numeric',
@@ -167,88 +122,6 @@
                                             }) %>
                                         </p>
                                     </div>
-<<<<<<< HEAD
-                                    <div class="text-right">
-                                        <span class="px-3 py-1 rounded-full text-sm
-                                            <%= order.status === 'completed' ? 'bg-green-100 text-green-800' : 
-                                               order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
-                                               'bg-gray-100 text-gray-800' %>">
-                                            <%= order.status.charAt(0).toUpperCase() + order.status.slice(1) %>
-                                        </span>
-                                        <p class="mt-2 font-semibold">₹<%= order.total_amount.toFixed(2) %></p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Expandable Order Details -->
-                            <div class="order-details border-t">
-                                <div class="p-6">
-                                    <!-- Order Items Table -->
-                                    <div class="mb-6">
-                                        <table class="min-w-full divide-y divide-gray-200">
-                                            <thead class="bg-gray-50">
-                                                <tr>
-                                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Item</th>
-                                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Quantity</th>
-                                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Price</th>
-                                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody class="bg-white divide-y divide-gray-200">
-                                                <% order.order_items.forEach(item => { %>
-                                                    <tr>
-                                                        <td class="px-6 py-4">
-                                                            <div class="flex items-center">
-                                                                <img src="<%= item.vegetables.image_url %>" 
-                                                                     alt="<%= item.vegetables.name %>"
-                                                                     class="w-12 h-12 object-cover rounded">
-                                                                <span class="ml-4"><%= item.vegetables.name %></span>
-                                                            </div>
-                                                        </td>
-                                                        <td class="px-6 py-4"><%= item.quantity %></td>
-                                                        <td class="px-6 py-4">₹<%= item.price.toFixed(2) %></td>
-                                                        <td class="px-6 py-4">₹<%= (item.price * item.quantity).toFixed(2) %></td>
-                                                    </tr>
-                                                <% }); %>
-                                            </tbody>
-                                        </table>
-                                    </div>
-
-                                    <!-- Order Summary and Actions -->
-                                    <div class="flex justify-between items-start">
-                                        <!-- Order Summary -->
-                                        <div class="w-64">
-                                            <div class="space-y-2">
-                                                <div class="flex justify-between text-sm">
-                                                    <span class="text-gray-600">Subtotal</span>
-                                                    <span>₹<%= order.total_amount.toFixed(2) %></span>
-                                                </div>
-                                                <div class="flex justify-between text-sm">
-                                                    <span class="text-gray-600">Delivery Fee</span>
-                                                    <span>₹50.00</span>
-                                                </div>
-                                                <div class="flex justify-between text-sm">
-                                                    <span class="text-gray-600">Tax (5%)</span>
-                                                    <span>₹<%= (order.total_amount * 0.05).toFixed(2) %></span>
-                                                </div>
-                                                <div class="border-t pt-2 mt-2">
-                                                    <div class="flex justify-between font-bold">
-                                                        <span>Total</span>
-                                                        <span>₹<%= (order.total_amount + 50 + (order.total_amount * 0.05)).toFixed(2) %></span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <!-- Actions -->
-                                        <div class="flex gap-4">
-                                            <button onclick="downloadAcknowledgement('<%= order.id %>')"
-                                                    class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
-                                                Download Receipt
-                                            </button>
-                                        </div>
-                                    </div>
-=======
                                     <span class="status-badge px-3 py-1 rounded-full text-sm
                                         <%= order.status === 'completed' ? 'bg-green-100 text-green-800' : 
                                            order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
@@ -259,26 +132,16 @@
                                 <div class="mt-4 flex justify-between items-center">
                                     <span class="text-sm text-gray-500"><%= order.items.length %> items</span>
                                     <span class="font-bold">₹<%= order.total_amount.toFixed(2) %></span>
->>>>>>> deba7f6 (added the gemni API key for the catbot)
                                 </div>
                             </div>
                         </div>
                     <% }); %>
                 <% } else { %>
-<<<<<<< HEAD
-                    <!-- Empty State -->
-                    <div class="bg-white rounded-lg shadow p-8 text-center">
-                        <div class="mb-6">
-                            <svg class="w-16 h-16 mx-auto text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                                      d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-=======
                     <div class="col-span-full bg-white rounded-lg shadow p-8 text-center">
                         <div class="mb-6">
                             <svg class="w-16 h-16 mx-auto text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
                                       d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
->>>>>>> deba7f6 (added the gemni API key for the catbot)
                             </svg>
                         </div>
                         <p class="text-xl text-gray-600 mb-6">No orders found</p>
@@ -292,67 +155,6 @@
         </div>
     </div>
 
-<<<<<<< HEAD
-    <script>
-        function toggleOrderDetails(element) {
-            const details = element.nextElementSibling;
-            details.classList.toggle('expanded');
-        }
-
-        function sortOrders() {
-            const container = document.getElementById('ordersContainer');
-            const orders = Array.from(container.getElementsByClassName('order-card'));
-            const sortBy = document.getElementById('orderSort').value;
-
-            orders.sort((a, b) => {
-                if (sortBy === 'date-desc' || sortBy === 'date-asc') {
-                    const dateA = parseInt(a.dataset.orderDate);
-                    const dateB = parseInt(b.dataset.orderDate);
-                    return sortBy === 'date-desc' ? dateB - dateA : dateA - dateB;
-                } else {
-                    const amountA = parseFloat(a.dataset.orderAmount);
-                    const amountB = parseFloat(b.dataset.orderAmount);
-                    return sortBy === 'amount-desc' ? amountB - amountA : amountA - amountB;
-                }
-            });
-
-            orders.forEach(order => container.appendChild(order));
-        }
-
-        function filterOrders() {
-            const status = document.getElementById('statusFilter').value;
-            const orders = document.getElementsByClassName('order-card');
-
-            Array.from(orders).forEach(order => {
-                if (status === 'all' || order.dataset.orderStatus === status) {
-                    order.style.display = 'block';
-                } else {
-                    order.style.display = 'none';
-                }
-            });
-        }
-
-        async function downloadAcknowledgement(orderId) {
-            try {
-                const response = await fetch(`/user/order-receipt/${orderId}`);
-                if (!response.ok) throw new Error('Failed to generate receipt');
-                
-                const blob = await response.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `order-${orderId}.pdf`;
-                document.body.appendChild(a);
-                a.click();
-                window.URL.revokeObjectURL(url);
-                a.remove();
-            } catch (error) {
-                console.error('Error:', error);
-                alert('Failed to download receipt');
-            }
-        }
-    </script>
-=======
     <!-- Order Details Modal -->
     <div class="order-overlay" id="orderOverlay" onclick="hideOrderDetails()"></div>
     <div class="order-modal" id="orderModal">
@@ -575,6 +377,5 @@
     </script>
 
     <%- include('../partials/chatbot') %>
->>>>>>> deba7f6 (added the gemni API key for the catbot)
 </body>
 </html> 

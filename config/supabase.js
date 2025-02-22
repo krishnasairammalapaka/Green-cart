@@ -4,13 +4,9 @@ require('dotenv').config();
 
 // Supabase configuration
 const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-<<<<<<< HEAD
-// Create Supabase client
-const supabase = createClient(supabaseUrl, supabaseKey);
-=======
-if (!supabaseUrl || !supabaseAnonKey) {
+if (!supabaseUrl || !supabaseKey) {
     throw new Error('Missing Supabase credentials. Please check your .env file');
 }
 
@@ -22,8 +18,12 @@ try {
     process.exit(1);
 }
 
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
->>>>>>> deba7f6 (added the gemni API key for the catbot)
+const supabase = createClient(supabaseUrl, supabaseKey, {
+    auth: {
+        autoRefreshToken: false,
+        persistSession: false
+    }
+});
 
 // Direct PostgreSQL connection
 const pool = new Pool({
@@ -34,27 +34,12 @@ const pool = new Pool({
 });
 
 // Test database connection
-<<<<<<< HEAD
-pool.query('SELECT NOW()', (err, res) => {
-    if (err) {
-        console.error('Database connection error:', err);
-    } else {
-        console.log('Database connected successfully');
-=======
 const testConnection = async () => {
     try {
         // Test Supabase connection
         const { data: usersData, error: usersError } = await supabase.from('users').select('count');
         if (usersError) throw usersError;
         console.log('Successfully connected to Supabase');
-
-        // Test admins table connection
-        const { data: adminData, error: adminError } = await supabase.from('admins').select('count');
-        if (adminError) {
-            console.error('Admins table error:', adminError.message);
-        } else {
-            console.log('Successfully connected to admins table');
-        }
 
         // Test PostgreSQL connection
         const client = await pool.connect();
@@ -66,9 +51,10 @@ const testConnection = async () => {
         }
     } catch (error) {
         console.error('Database connection error:', error.message);
->>>>>>> deba7f6 (added the gemni API key for the catbot)
     }
-});
+};
+
+testConnection();
 
 module.exports = {
     supabase,

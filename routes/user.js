@@ -4,11 +4,8 @@ const { supabase } = require('../config/supabase');
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const PDFDocument = require('pdfkit');
-<<<<<<< HEAD
-=======
 const fs = require('fs');
 const path = require('path');
->>>>>>> deba7f6 (added the gemni API key for the catbot)
 
 // Middleware to check if user is logged in
 const isAuthenticated = (req, res, next) => {
@@ -21,11 +18,11 @@ const isAuthenticated = (req, res, next) => {
 
 // Add Razorpay
 const razorpay = new Razorpay({
-    key_id: 'rzp_test_CVbypqu6YtbzvT',
-    key_secret: 'Qi0jllHSrENWlNxGl0QXbJC5'
+    key_id: process.env.RAZORPAY_KEY_ID,
+    key_secret: process.env.RAZORPAY_KEY_SECRET
 });
 
-// Add this helper function at the top of the file
+// Helper function for order count
 async function getOrderCount(userId) {
     const { count } = await supabase
         .from('orders')
@@ -34,14 +31,14 @@ async function getOrderCount(userId) {
     return count || 0;
 }
 
-// Make sure these directories exist
+// Ensure directories exist
 const ensureDirectoryExists = (directory) => {
     if (!fs.existsSync(directory)) {
         fs.mkdirSync(directory, { recursive: true });
     }
 };
 
-// Add this before your routes
+// Create necessary directories
 ensureDirectoryExists(path.join(__dirname, '../public/pdfs'));
 ensureDirectoryExists(path.join(__dirname, '../public/images'));
 
@@ -220,23 +217,15 @@ router.delete('/cart/remove/:id', isAuthenticated, async (req, res) => {
 });
 
 // Orders route
-router.get('/orders', isAuthenticated, async (req, res, next) => {
+router.get('/orders', isAuthenticated, async (req, res) => {
     try {
-<<<<<<< HEAD
-=======
-        // Fetch orders with their items and vegetable details
->>>>>>> deba7f6 (added the gemni API key for the catbot)
         const { data: orders, error } = await supabase
             .from('orders')
             .select(`
                 *,
-                order_items (
+                items:order_items (
                     *,
-<<<<<<< HEAD
-                    vegetables (*)
-=======
                     vegetables:vegetable_id (*)
->>>>>>> deba7f6 (added the gemni API key for the catbot)
                 )
             `)
             .eq('user_id', req.session.user.id)
@@ -245,28 +234,13 @@ router.get('/orders', isAuthenticated, async (req, res, next) => {
         if (error) throw error;
 
         res.render('user/orders', {
-<<<<<<< HEAD
-            orders,
-            orderCount: orders.length,
-            user: req.session.user,
-=======
             orders: orders || [],
->>>>>>> deba7f6 (added the gemni API key for the catbot)
-            currentPage: 'orders'
+            currentPage: 'orders',
+            user: req.session.user
         });
     } catch (error) {
         console.error('Error fetching orders:', error);
-<<<<<<< HEAD
-        res.render('user/orders', {
-            orders: [],
-            orderCount: 0,
-            error: 'Failed to fetch orders',
-            user: req.session.user,
-            currentPage: 'orders'
-        });
-=======
         next(error);
->>>>>>> deba7f6 (added the gemni API key for the catbot)
     }
 });
 
@@ -291,11 +265,6 @@ router.post('/create-order', isAuthenticated, async (req, res) => {
         const subtotal = cartItems.reduce((sum, item) => {
             return sum + (item.vegetables.price * item.quantity);
         }, 0);
-<<<<<<< HEAD
-        const deliveryFee = 50;
-        const tax = subtotal * 0.05;
-        const total = Math.round((subtotal + deliveryFee + tax) * 100); // Convert to paise
-=======
         
         const deliveryFee = 50.00; // Fixed delivery fee
         const tax = subtotal * 0.05;  // 5% tax
@@ -307,24 +276,18 @@ router.post('/create-order', isAuthenticated, async (req, res) => {
             currency: 'INR',
             receipt: `order_${Date.now()}`
         });
->>>>>>> deba7f6 (added the gemni API key for the catbot)
 
         // Create order in database
         const { data: order, error: orderError } = await supabase
             .from('orders')
             .insert([{
                 user_id: req.session.user.id,
-<<<<<<< HEAD
-                total_amount: total / 100, // Store in rupees
-                status: 'pending'
-=======
                 total_amount: total,
                 delivery_fee: deliveryFee,  // Add delivery fee
                 subtotal: subtotal,         // Add subtotal
                 tax: tax,                   // Add tax
                 status: 'pending',
                 razorpay_order_id: razorpayOrder.id
->>>>>>> deba7f6 (added the gemni API key for the catbot)
             }])
             .select()
             .single();
@@ -345,21 +308,6 @@ router.post('/create-order', isAuthenticated, async (req, res) => {
 
         if (itemsError) throw itemsError;
 
-<<<<<<< HEAD
-        // Create Razorpay order
-        const razorpayOrder = await razorpay.orders.create({
-            amount: total,
-            currency: 'INR',
-            receipt: order.id,
-            payment_capture: 1
-        });
-
-        // Update order with Razorpay order ID
-        await supabase
-            .from('orders')
-            .update({ razorpay_order_id: razorpayOrder.id })
-            .eq('id', order.id);
-=======
         // Clear cart after successful order creation
         const { error: clearCartError } = await supabase
             .from('cart_items')
@@ -367,21 +315,15 @@ router.post('/create-order', isAuthenticated, async (req, res) => {
             .eq('user_id', req.session.user.id);
 
         if (clearCartError) throw clearCartError;
->>>>>>> deba7f6 (added the gemni API key for the catbot)
 
         res.json({
             orderId: order.id,
             razorpayOrderId: razorpayOrder.id,
-<<<<<<< HEAD
-            amount: total,
-            currency: 'INR'
-=======
             amount: razorpayOrder.amount,
             subtotal,
             deliveryFee,
             tax,
             total
->>>>>>> deba7f6 (added the gemni API key for the catbot)
         });
     } catch (error) {
         console.error('Error creating order:', error);
@@ -434,62 +376,13 @@ router.post('/verify-payment', isAuthenticated, async (req, res) => {
     }
 });
 
-<<<<<<< HEAD
-// Add this route to generate and download order receipt
-router.get('/order-receipt/:orderId', isAuthenticated, async (req, res) => {
-    try {
-        const { orderId } = req.params;
-
-=======
+// PDF generation route
 router.get('/orders/:orderId/pdf', isAuthenticated, async (req, res) => {
     try {
->>>>>>> deba7f6 (added the gemni API key for the catbot)
-        // Fetch order details
         const { data: order, error } = await supabase
             .from('orders')
             .select(`
                 *,
-<<<<<<< HEAD
-                order_items (
-                    *,
-                    vegetables (*)
-                )
-            `)
-            .eq('id', orderId)
-            .single();
-
-        if (error) throw error;
-
-        // Create PDF
-        const doc = new PDFDocument();
-        res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', `attachment; filename=order-${orderId}.pdf`);
-        doc.pipe(res);
-
-        // Add content to PDF
-        doc.fontSize(20).text('Order Receipt', { align: 'center' });
-        doc.moveDown();
-        doc.fontSize(12).text(`Order ID: ${orderId}`);
-        doc.text(`Date: ${new Date(order.created_at).toLocaleString()}`);
-        doc.moveDown();
-
-        // Add items
-        doc.text('Items:', { underline: true });
-        order.order_items.forEach(item => {
-            doc.text(`${item.vegetables.name} x ${item.quantity} - ₹${(item.price * item.quantity).toFixed(2)}`);
-        });
-
-        doc.moveDown();
-        doc.text(`Subtotal: ₹${order.total_amount.toFixed(2)}`);
-        doc.text(`Delivery Fee: ₹50.00`);
-        doc.text(`Tax (5%): ₹${(order.total_amount * 0.05).toFixed(2)}`);
-        doc.text(`Total: ₹${(order.total_amount + 50 + (order.total_amount * 0.05)).toFixed(2)}`, { bold: true });
-
-        doc.end();
-    } catch (error) {
-        console.error('Error generating receipt:', error);
-        res.status(500).send('Failed to generate receipt');
-=======
                 items:order_items (
                     *,
                     vegetables:vegetable_id (*)
@@ -503,109 +396,77 @@ router.get('/orders/:orderId/pdf', isAuthenticated, async (req, res) => {
             throw new Error('Order not found');
         }
 
-        // Create PDF document
+        // Create PDF
         const doc = new PDFDocument({
             margin: 50,
             size: 'A4',
             bufferPages: true
         });
 
-        // Create a write stream for the PDF
+        // Set up PDF generation
         const pdfPath = path.join(__dirname, `../public/pdfs/order-${order.id.slice(-8)}.pdf`);
         const writeStream = fs.createWriteStream(pdfPath);
 
-        // Pipe the PDF to both the file and the response
         doc.pipe(writeStream);
         doc.pipe(res);
 
-        // Set response headers
-        res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', `attachment; filename=order-${order.id.slice(-8)}.pdf`);
+        // Add PDF content
+        doc.fontSize(20).text('Order Receipt', { align: 'center' });
+        doc.moveDown();
+        doc.fontSize(12).text(`Order ID: ${order.id}`);
+        doc.text(`Date: ${new Date(order.created_at).toLocaleString()}`);
+        doc.moveDown();
 
-        try {
-            // Add logo if exists
-            const logoPath = path.join(__dirname, '../public/images/greenscart-logo.png');
-            if (fs.existsSync(logoPath)) {
-                doc.image(logoPath, {
-                    fit: [150, 150],
-                    align: 'center'
-                });
-            }
+        // Add items
+        doc.text('Items:', { underline: true });
+        order.items.forEach(item => {
+            doc.text(`${item.vegetables.name} x ${item.quantity} - ₹${(item.price * item.quantity).toFixed(2)}`);
+        });
 
-            // Add company logo/header
-            doc
-                .fontSize(20)
-                .text('GreenScart', { align: 'center' })
-                .fontSize(16)
-                .text('Order Acknowledgment', { align: 'center' })
-                .moveDown(2);
+        doc.moveDown();
+        doc.text(`Subtotal: ₹${order.total_amount.toFixed(2)}`);
+        doc.text(`Delivery Fee: ₹${order.delivery_fee.toFixed(2)}`);
+        doc.text(`Tax (5%): ₹${order.tax.toFixed(2)}`);
+        doc.text(`Total: ₹${order.total_amount.toFixed(2)}`, { bold: true });
 
-            // Add order information
-            doc
-                .fontSize(12)
-                .text('Order Information', { underline: true })
-                .moveDown(0.5)
-                .text(`Order ID: #${order.id.slice(-8)}`)
-                .text(`Order Date: ${new Date(order.created_at).toLocaleString()}`)
-                .text(`Status: ${order.status.charAt(0).toUpperCase() + order.status.slice(1)}`)
-                .moveDown(1.5);
+        // Finalize PDF
+        doc.end();
 
-            // Add items table header
-            doc
-                .fontSize(14)
-                .text('Order Items', { underline: true })
-                .moveDown(0.5);
-
-            // Add items with proper formatting
-            order.items.forEach((item, index) => {
-                doc
-                    .fontSize(12)
-                    .text(`${index + 1}. ${item.vegetables.name}`, { continued: true })
-                    .text(`   Quantity: ${item.quantity}`, { continued: true })
-                    .text(`   Price: ₹${item.price.toFixed(2)}`, { continued: true })
-                    .text(`   Total: ₹${(item.quantity * item.price).toFixed(2)}`)
-                    .moveDown(0.5);
+        // Cleanup
+        writeStream.on('finish', () => {
+            fs.unlink(pdfPath, (err) => {
+                if (err) console.error('Error deleting temporary PDF:', err);
             });
-
-            // Add order summary
-            doc
-                .moveDown(1.5)
-                .fontSize(12)
-                .text('Order Summary', { underline: true })
-                .moveDown(0.5)
-                .text(`Subtotal: ₹${(order.total_amount - order.delivery_fee).toFixed(2)}`)
-                .text(`Delivery Fee: ₹${order.delivery_fee.toFixed(2)}`)
-                .moveDown(0.5)
-                .fontSize(14)
-                .text(`Total Amount: ₹${order.total_amount.toFixed(2)}`, { bold: true })
-                .moveDown(2);
-
-            // Add footer
-            doc
-                .fontSize(10)
-                .text('Thank you for shopping with GreenScart!', { align: 'center', color: 'green' })
-                .text(`Generated on: ${new Date().toLocaleString()}`, { align: 'center' });
-
-            // End the document
-            doc.end();
-
-            // Clean up the temporary file after sending
-            writeStream.on('finish', () => {
-                fs.unlink(pdfPath, (err) => {
-                    if (err) console.error('Error deleting temporary PDF:', err);
-                });
-            });
-
-        } catch (pdfError) {
-            console.error('Error generating PDF content:', pdfError);
-            doc.end(); // Make sure to end the document even if there's an error
-            res.status(500).send('Error generating PDF content');
-        }
+        });
 
     } catch (error) {
-        console.error('Error fetching order data:', error);
+        console.error('Error generating PDF:', error);
         res.status(500).send('Failed to generate PDF');
->>>>>>> deba7f6 (added the gemni API key for the catbot)
+    }
+});
+
+// Update user profile
+router.put('/update-profile', async (req, res) => {
+    try {
+        const userId = req.session.user.id;
+        const updateData = req.body;
+
+        const { data, error } = await supabase
+            .from('users')
+            .update(updateData)
+            .eq('id', userId)
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        // Update session user data
+        req.session.user = { ...req.session.user, ...updateData };
+
+        res.json(data);
+    } catch (error) {
+        console.error('Error updating profile:', error);
+        res.status(500).json({ error: 'Failed to update profile' });
     }
 });
 
