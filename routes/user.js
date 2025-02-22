@@ -216,31 +216,91 @@ router.delete('/cart/remove/:id', isAuthenticated, async (req, res) => {
     }
 });
 
-// Orders route
+// User Orders Route
 router.get('/orders', isAuthenticated, async (req, res) => {
     try {
+        // Debug: Log the user ID we're searching for
+        console.log('Fetching orders for user:', req.session.user.id);
+
+        // First fetch orders with a simpler query
         const { data: orders, error } = await supabase
             .from('orders')
-            .select(`
-                *,
-                items:order_items (
-                    *,
-                    vegetables:vegetable_id (*)
-                )
-            `)
-            .eq('user_id', req.session.user.id)
-            .order('created_at', { ascending: false });
+            .select('*')
+            .eq('user_id', req.session.user.id);
 
-        if (error) throw error;
+        if (error) {
+            console.error('Orders fetch error:', error);
+            return res.render('user/orders', {
+                orders: [],
+                error: 'Failed to load orders',
+                currentPage: 'orders',
+                user: req.session.user
+            });
+        }
 
+        // Debug: Log the fetched orders
+        console.log('Fetched orders:', orders);
+
+        // Process the orders into the required format
+        const processedOrders = orders.map(order => ({
+            id: order.id,
+            status: order.status || 'pending',
+            created_at: order.created_at,
+            total_amount: order.total_amount || 0,
+            delivery_fee: order.delivery_fee || 50,
+            items: [], // We'll fetch items separately if needed
+            delivery_address: order.delivery_address,
+            payment_status: order.payment_status || 'pending'
+        }));
+
+        // Render the orders page
         res.render('user/orders', {
-            orders: orders || [],
+            orders: processedOrders,
             currentPage: 'orders',
             user: req.session.user
         });
+
     } catch (error) {
-        console.error('Error fetching orders:', error);
-        next(error);
+        console.error('Error in orders route:', error);
+        res.render('user/orders', {
+            orders: [],
+            error: 'An error occurred while loading your orders',
+            currentPage: 'orders',
+            user: req.session.user
+        });
+    }
+});
+
+// Get single order details
+router.get('/orders/:id/details', isAuthenticated, async (req, res) => {
+    try {
+        // Debug: Log the order ID we're looking for
+        console.log('Fetching details for order:', req.params.id);
+
+        // Fetch the basic order details
+        const { data: order, error } = await supabase
+            .from('orders')
+            .select('*')
+            .eq('id', req.params.id)
+            .eq('user_id', req.session.user.id)
+            .single();
+
+        if (error) {
+            console.error('Order fetch error:', error);
+            throw error;
+        }
+
+        // Debug: Log the fetched order
+        console.log('Found order:', order);
+
+        res.json(order);
+
+    } catch (error) {
+        console.error('Error fetching order details:', error);
+        res.status(500).json({ 
+            error: 'Failed to fetch order details',
+            details: error.message 
+        });
     }
 });
 
