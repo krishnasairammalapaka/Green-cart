@@ -4,10 +4,10 @@ require('dotenv').config();
 
 // Supabase configuration
 const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || !supabaseKey) {
-    throw new Error('Missing Supabase credentials. Please check your .env file');
+if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error('Missing Supabase URL or Anonymous Key');
 }
 
 // Validate URL format
@@ -18,12 +18,7 @@ try {
     process.exit(1);
 }
 
-const supabase = createClient(supabaseUrl, supabaseKey, {
-    auth: {
-        autoRefreshToken: false,
-        persistSession: false
-    }
-});
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // Direct PostgreSQL connection
 const pool = new Pool({

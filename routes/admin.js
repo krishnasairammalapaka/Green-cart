@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const { supabase } = require('../config/supabase');
 const adminAuth = require('../middleware/adminAuth');
+const multer = require('multer');
+const upload = multer({ dest: 'uploads/' });
 
 // Public admin routes (no auth required)
 router.get('/login', (req, res) => {
@@ -123,6 +125,183 @@ router.get('/logout', (req, res) => {
     req.session.destroy(() => {
         res.redirect('/admin/login');
     });
+});
+
+// Vegetables Management
+router.get('/vegetables', async (req, res) => {
+    try {
+        const { data: vegetables, error } = await supabase
+            .from('vegetables')
+            .select('*');
+
+        if (error) throw error;
+
+        res.render('admin/manage-vegetables', { 
+            vegetables,
+            currentPage: 'vegetables'
+        });
+    } catch (error) {
+        res.status(500).render('admin/manage-vegetables', { 
+            vegetables: [],
+            error: 'Failed to load vegetables',
+            currentPage: 'vegetables'
+        });
+    }
+});
+
+// Orders Management
+router.get('/orders', async (req, res) => {
+    try {
+        const { data: orders, error } = await supabase
+            .from('orders')
+            .select(`
+                *,
+                users (*),
+                order_items (
+                    *,
+                    vegetables (*)
+                )
+            `);
+
+        if (error) throw error;
+
+        res.render('admin/orders', { 
+            orders,
+            currentPage: 'orders'
+        });
+    } catch (error) {
+        res.status(500).render('admin/orders', { 
+            orders: [],
+            error: 'Failed to load orders',
+            currentPage: 'orders'
+        });
+    }
+});
+
+// Users Management
+router.get('/users', async (req, res) => {
+    try {
+        const { data: users, error } = await supabase
+            .from('users')
+            .select('*');
+
+        if (error) throw error;
+
+        res.render('admin/users', { 
+            users,
+            currentPage: 'users'
+        });
+    } catch (error) {
+        res.status(500).render('admin/users', { 
+            users: [],
+            error: 'Failed to load users',
+            currentPage: 'users'
+        });
+    }
+});
+
+// Farmer Information
+router.get('/farmer-info', async (req, res) => {
+    try {
+        const { data: landData, error } = await supabase
+            .from('land')
+            .select('*');
+
+        if (error) throw error;
+
+        res.render('admin/farmer-info', { 
+            landData,
+            currentPage: 'farmer-info'
+        });
+    } catch (error) {
+        res.status(500).render('admin/farmer-info', { 
+            landData: [],
+            error: 'Failed to load farmer information',
+            currentPage: 'farmer-info'
+        });
+    }
+});
+
+// Weather Information
+router.get('/weather', async (req, res) => {
+    try {
+        let weather = null;
+        let forecast = null;
+        let error = null;
+
+        if (req.query.location) {
+            const weatherUrl = `https://api.openweathermap.org/data/2.5/weather?q=${req.query.location}&appid=${process.env.WEATHER_API_KEY}&units=metric`;
+            const forecastUrl = `https://api.openweathermap.org/data/2.5/forecast?q=${req.query.location}&appid=${process.env.WEATHER_API_KEY}&units=metric`;
+
+            const [weatherRes, forecastRes] = await Promise.all([
+                fetch(weatherUrl),
+                fetch(forecastUrl)
+            ]);
+
+            if (weatherRes.ok && forecastRes.ok) {
+                weather = await weatherRes.json();
+                forecast = await forecastRes.json();
+            } else {
+                error = 'Failed to fetch weather data';
+            }
+        }
+
+        res.render('admin/weather', { 
+            weather, 
+            forecast, 
+            error,
+            currentPage: 'weather'
+        });
+    } catch (error) {
+        res.status(500).render('admin/weather', { 
+            weather: null,
+            forecast: null,
+            error: 'Failed to load weather information',
+            currentPage: 'weather'
+        });
+    }
+});
+
+// API Routes for CRUD operations
+router.post('/vegetables', async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('vegetables')
+            .insert(req.body);
+
+        if (error) throw error;
+        res.json({ success: true, data });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to create vegetable' });
+    }
+});
+
+router.put('/vegetables/:id', async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('vegetables')
+            .update(req.body)
+            .eq('id', req.params.id);
+
+        if (error) throw error;
+        res.json({ success: true, data });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to update vegetable' });
+    }
+});
+
+router.delete('/vegetables/:id', async (req, res) => {
+    try {
+        const { error } = await supabase
+            .from('vegetables')
+            .delete()
+            .eq('id', req.params.id);
+
+        if (error) throw error;
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to delete vegetable' });
+    }
 });
 
 module.exports = router; 
