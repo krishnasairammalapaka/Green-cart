@@ -5,6 +5,7 @@ const QRCode = require('qrcode');
 const Admin = require('../models/admin');
 const { verifyTOTP } = require('../utils/totp');
 const { supabase } = require('../config/supabase');
+const passport = require('passport');
 
 const router = express.Router();
 
@@ -255,5 +256,43 @@ router.post('/verify-setup-totp', async (req, res) => {
         });
     }
 });
+
+// Google OAuth routes
+router.get('/google',
+    passport.authenticate('google', {
+        scope: ['profile', 'email']
+    })
+);
+
+router.get('/google/callback',
+    passport.authenticate('google', {
+        failureRedirect: '/login',
+        failureFlash: true
+    }),
+    async (req, res) => {
+        try {
+            // Set user session
+            req.session.user = req.user;
+            req.session.isAuthenticated = true;
+
+            // Redirect based on user role
+            const { data: adminCheck } = await supabase
+                .from('admins')
+                .select('*')
+                .eq('email', req.user.email)
+                .single();
+
+            if (adminCheck) {
+                req.session.isAdmin = true;
+                res.redirect('/admin/dashboard');
+            } else {
+                res.redirect('/user/dashboard');
+            }
+        } catch (error) {
+            console.error('Google auth callback error:', error);
+            res.redirect('/login');
+        }
+    }
+);
 
 module.exports = router; 

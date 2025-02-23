@@ -4,7 +4,8 @@ const cors = require('cors');
 const session = require('express-session');
 const path = require('path');
 const { supabase } = require('./config/supabase');
-const passport = require('./config/passport-google');
+const passport = require('passport');
+require('./config/passport-google');
 const PDFDocument = require('pdfkit');
 const fs = require('fs');
 const authRoutes = require('./routes/authRoutes');
@@ -41,6 +42,7 @@ app.set('views', path.join(__dirname, 'views'));
 // Middleware to make session available to all views
 app.use((req, res, next) => {
     res.locals.session = req.session;
+    res.locals.user = req.user;
     next();
 });
 
