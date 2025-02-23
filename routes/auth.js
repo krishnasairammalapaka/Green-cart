@@ -1,62 +1,62 @@
 const express = require('express');
 const router = express.Router();
-const { supabase } = require('../config/supabase');
+const { supabase } = require('../config/database');
 const passport = require('passport');
 
-// Login route for all users (admin, user, farmer)
+// Login page
+router.get('/login', (req, res) => {
+    if (req.session.user) {
+        return res.redirect('/admin/dashboard');
+    }
+    res.render('auth/login', { error: null });
+});
+
+// Login handler
 router.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body;
-        console.log('Attempting login for email:', email);
+        
+        // Check if it's an admin login
+        if (email === 'admin@greencart.com') {
+            const { data: admin, error } = await supabase
+                .from('admins')
+                .select('*')
+                .eq('email', email)
+                .single();
 
-        // Check in all tables using Supabase
-        const { data: admin } = await supabase
-            .from('admins')
-            .select('*')
-            .eq('email', email)
-            .single();
+            if (error || !admin || admin.password !== password) {
+                return res.render('auth/login', { error: 'Invalid credentials' });
+            }
 
-        // Check admin first
-        if (admin && admin.password === password) {
-            console.log('Admin login successful');
             req.session.user = {
                 id: admin.id,
-                name: admin.name,
                 email: admin.email,
                 role: 'admin'
             };
             return res.redirect('/admin/dashboard');
         }
 
-        // Check user credentials
-        const { data: user } = await supabase
+        // Regular user login
+        const { data: user, error } = await supabase
             .from('users')
             .select('*')
             .eq('email', email)
             .single();
 
-        if (user && user.password === password) {
-            console.log('User login successful');
-            req.session.user = {
-                id: user.id,
-                name: user.name,
-                email: user.email,
-                role: 'user'
-            };
-            return res.redirect('/user/dashboard');
+        if (error || !user || user.password !== password) {
+            return res.render('auth/login', { error: 'Invalid credentials' });
         }
 
-        // If no match found
-        console.log('Login failed: Invalid credentials');
-        return res.render('index', {
-            error: 'Invalid email or password'
-        });
+        req.session.user = {
+            id: user.id,
+            email: user.email,
+            role: 'user'
+        };
+        res.redirect('/user/dashboard');
 
     } catch (error) {
         console.error('Login error:', error);
-        return res.render('index', {
-            error: 'An error occurred during login'
-        });
+        res.render('auth/login', { error: 'An error occurred during login' });
     }
 });
 
@@ -111,13 +111,10 @@ router.post('/register', async (req, res) => {
     }
 });
 
-// Logout route
+// Logout
 router.get('/logout', (req, res) => {
-    req.session.destroy((err) => {
-        if (err) {
-            console.error('Logout error:', err);
-        }
-        res.redirect('/');
+    req.session.destroy(() => {
+        res.redirect('/auth/login');
     });
 });
 

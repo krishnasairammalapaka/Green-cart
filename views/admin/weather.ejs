@@ -82,10 +82,12 @@
                         <div class="weather-card bg-white p-6 rounded-xl shadow-md">
                             <div class="flex items-center justify-between mb-4">
                                 <div>
-                                    <h3 class="text-xl font-semibold"><%= weather.name %>, <%= weather.country %></h3>
+                                    <h3 class="text-xl font-semibold">
+                                        <%= weather.name %>, <%= weather.sys.country %>
+                                    </h3>
                                     <p class="text-gray-500">Current Weather</p>
                                 </div>
-                                <img src="http://openweathermap.org/img/w/<%= weather.weather[0].icon %>.png" 
+                                <img src="https://openweathermap.org/img/w/<%= weather.weather[0].icon %>.png" 
                                      alt="<%= weather.weather[0].description %>"
                                      class="w-16 h-16">
                             </div>
@@ -96,7 +98,24 @@
                                 </div>
                                 <div class="text-right">
                                     <p class="text-gray-600">Humidity: <%= weather.main.humidity %>%</p>
-                                    <p class="text-gray-600">Wind: <%= weather.wind.speed %> m/s</p>
+                                    <p class="text-gray-600">Wind: <%= Math.round(weather.wind.speed * 3.6) %> km/h</p>
+                                    <p class="text-gray-600">Feels like: <%= Math.round(weather.main.feels_like) %>°C</p>
+                                </div>
+                            </div>
+                            <div class="mt-4 pt-4 border-t border-gray-200">
+                                <div class="grid grid-cols-3 gap-2 text-center">
+                                    <div>
+                                        <p class="text-gray-500">Min</p>
+                                        <p class="font-semibold"><%= Math.round(weather.main.temp_min) %>°C</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-gray-500">Max</p>
+                                        <p class="font-semibold"><%= Math.round(weather.main.temp_max) %>°C</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-gray-500">Pressure</p>
+                                        <p class="font-semibold"><%= weather.main.pressure %> hPa</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -107,12 +126,18 @@
                             <div class="space-y-4">
                                 <% let processedDates = new Set(); %>
                                 <% forecast.list.forEach(item => { %>
-                                    <% const date = new Date(item.dt * 1000).toLocaleDateString(); %>
+                                    <% 
+                                    const date = new Date(item.dt * 1000).toLocaleDateString('en-US', {
+                                        weekday: 'short',
+                                        month: 'short',
+                                        day: 'numeric'
+                                    }); 
+                                    %>
                                     <% if (!processedDates.has(date)) { %>
                                         <% processedDates.add(date); %>
-                                        <div class="flex items-center justify-between">
+                                        <div class="flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg transition-colors duration-200">
                                             <div class="flex items-center">
-                                                <img src="http://openweathermap.org/img/w/<%= item.weather[0].icon %>.png" 
+                                                <img src="https://openweathermap.org/img/w/<%= item.weather[0].icon %>.png" 
                                                      alt="<%= item.weather[0].description %>"
                                                      class="w-10 h-10 mr-2">
                                                 <div>
@@ -122,9 +147,14 @@
                                                     </p>
                                                 </div>
                                             </div>
-                                            <p class="text-lg font-semibold">
-                                                <%= Math.round(item.main.temp) %>°C
-                                            </p>
+                                            <div class="text-right">
+                                                <p class="text-lg font-semibold">
+                                                    <%= Math.round(item.main.temp) %>°C
+                                                </p>
+                                                <p class="text-sm text-gray-500">
+                                                    <%= Math.round(item.main.humidity) %>% humidity
+                                                </p>
+                                            </div>
                                         </div>
                                     <% } %>
                                 <% }); %>
@@ -143,18 +173,14 @@
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDBRvts55sYzQ0hcPcF0qp6ApnwW-hHmYo&libraries=places"></script>
     <script>
         let autocomplete;
-        let selectedIndex = -1;
-        let suggestions = [];
-        let searchCache = new Map(); // Cache for recent searches
         
-        // Initialize Google Places Autocomplete with enhanced options
         function initAutocomplete() {
             const input = document.getElementById('locationSearch');
             const options = {
                 types: ['(cities)'],
-                fields: ['place_id', 'geometry', 'name', 'formatted_address'],
+                fields: ['formatted_address'],
                 strictBounds: false,
-                componentRestrictions: { country: 'IN' } // Restrict to India
+                componentRestrictions: { country: 'IN' }
             };
             
             autocomplete = new google.maps.places.Autocomplete(input, options);
@@ -162,166 +188,35 @@
             // Handle place selection
             autocomplete.addListener('place_changed', () => {
                 const place = autocomplete.getPlace();
-                if (place.geometry) {
+                if (place.formatted_address) {
                     searchWeather(place.formatted_address);
                 }
             });
         }
 
-        // Enhanced search algorithm with fuzzy matching
-        function fuzzyMatch(pattern, str) {
-            pattern = pattern.toLowerCase();
-            str = str.toLowerCase();
-            let patternIdx = 0;
-            let strIdx = 0;
-            let match = false;
-            let matches = [];
-
-            while (strIdx < str.length) {
-                if (pattern[patternIdx] === str[strIdx]) {
-                    matches.push(strIdx);
-                    patternIdx++;
-                    if (patternIdx >= pattern.length) {
-                        match = true;
-                        break;
-                    }
-                }
-                strIdx++;
-            }
-
-            return match ? matches : null;
-        }
-
-        // Improved debounce with immediate option
-        function debounce(func, wait, immediate = false) {
-            let timeout;
-            return function(...args) {
-                const later = () => {
-                    timeout = null;
-                    if (!immediate) func.apply(this, args);
-                };
-                const callNow = immediate && !timeout;
-                clearTimeout(timeout);
-                timeout = setTimeout(later, wait);
-                if (callNow) func.apply(this, args);
-            };
-        }
-
-        // Enhanced search with multiple algorithms
-        async function performSearch() {
-            const query = searchInput.value.trim();
-            if (!query) return;
-
-            // Check cache first
-            if (searchCache.has(query)) {
-                displaySuggestions(searchCache.get(query));
-                return;
-            }
-
-            try {
-                // Parallel search using multiple services
-                const [googleResults, customResults] = await Promise.all([
-                    searchGooglePlaces(query),
-                    searchCustomDatabase(query)
-                ]);
-
-                // Merge and rank results
-                const mergedResults = mergeAndRankResults(googleResults, customResults);
-                
-                // Cache the results
-                searchCache.set(query, mergedResults);
-                
-                // Update UI and perform weather search
-                if (mergedResults.length > 0) {
-                    const bestMatch = mergedResults[0];
-                    searchWeather(bestMatch.description);
-                } else {
-                    alert('No locations found. Please try a different search term.');
-                }
-            } catch (error) {
-                console.error('Search error:', error);
-                alert('Search failed. Please try again.');
+        function performSearch() {
+            const query = document.getElementById('locationSearch').value.trim();
+            if (query) {
+                searchWeather(query);
             }
         }
 
-        // Search using Google Places
-        async function searchGooglePlaces(query) {
-            return new Promise((resolve) => {
-                const service = new google.maps.places.AutocompleteService();
-                service.getPlacePredictions({
-                    input: query,
-                    types: ['(cities)'],
-                    componentRestrictions: { country: 'IN' }
-                }, (results) => resolve(results || []));
-            });
+        async function searchWeather(location) {
+            window.location.href = `/admin/weather?location=${encodeURIComponent(location)}`;
         }
 
-        // Custom database search (can be extended with backend API)
-        async function searchCustomDatabase(query) {
-            // Implement your custom search logic here
-            return [];
-        }
-
-        // Merge and rank results based on relevance
-        function mergeAndRankResults(googleResults, customResults) {
-            const allResults = [...googleResults, ...customResults];
-            
-            // Score and sort results
-            return allResults
-                .map(result => ({
-                    ...result,
-                    score: calculateRelevanceScore(result, searchInput.value)
-                }))
-                .sort((a, b) => b.score - a.score);
-        }
-
-        // Calculate relevance score for ranking
-        function calculateRelevanceScore(result, query) {
-            let score = 0;
-            const description = result.description.toLowerCase();
-            query = query.toLowerCase();
-
-            // Exact match bonus
-            if (description.includes(query)) {
-                score += 10;
-            }
-
-            // Prefix match bonus
-            if (description.startsWith(query)) {
-                score += 5;
-            }
-
-            // Fuzzy match score
-            const fuzzyMatches = fuzzyMatch(query, description);
-            if (fuzzyMatches) {
-                score += 3;
-            }
-
-            // Population/importance bias (if available)
-            if (result.structured_formatting?.main_text_matched_substrings) {
-                score += 2;
-            }
-
-            return score;
-        }
-
-        // Initialize event listeners
+        // Initialize when document loads
         document.addEventListener('DOMContentLoaded', () => {
             initAutocomplete();
             
             // Add keyboard event listener for search
-            searchInput.addEventListener('keypress', (e) => {
+            document.getElementById('locationSearch').addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {
                     e.preventDefault();
                     performSearch();
                 }
             });
         });
-
-        // Search weather for location
-        async function searchWeather(location) {
-            window.location.href = `/admin/weather?location=${encodeURIComponent(location)}`;
-        }
     </script>
 </body>
 </html> 

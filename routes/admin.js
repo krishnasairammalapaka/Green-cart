@@ -4,6 +4,9 @@ const { supabase } = require('../config/supabase');
 const adminAuth = require('../middleware/adminAuth');
 const multer = require('multer');
 const upload = multer({ dest: 'uploads/' });
+const adminController = require('../controllers/adminController');
+const { isAdmin } = require('../middleware/auth');
+const fetch = require('node-fetch');
 
 // Public admin routes (no auth required)
 router.get('/login', (req, res) => {
@@ -32,22 +35,12 @@ router.post('/login', async (req, res) => {
             return res.render('admin/login', { error: 'Invalid credentials' });
         }
 
-        // Check if TOTP is required
-        if (!admin.totp_enabled || !admin.totp_secret) {
-            req.session.setupTOTP = {
-                adminId: admin.id,
-                email: admin.email
-            };
-            return res.redirect('/auth/setup-2fa');
-        }
+        // Set admin session
+        req.session.adminId = admin.id;
+        req.session.adminEmail = admin.email;
+        req.session.isAdmin = true;
 
-        // Show TOTP verification
-        req.session.tempAdmin = {
-            id: admin.id,
-            email: admin.email
-        };
-        res.redirect('/auth/verify-admin-totp');
-
+        res.redirect('/admin/dashboard');
     } catch (error) {
         console.error('Login error:', error);
         res.render('admin/login', { error: 'An error occurred during login' });
@@ -122,7 +115,12 @@ router.get('/dashboard', async (req, res) => {
 
 // Logout route
 router.get('/logout', (req, res) => {
-    req.session.destroy(() => {
+    req.session.destroy((err) => {
+        if (err) {
+            console.error('Logout error:', err);
+            return res.redirect('/admin/dashboard');
+        }
+        res.clearCookie('connect.sid'); // Clear the session cookie
         res.redirect('/admin/login');
     });
 });
@@ -382,66 +380,59 @@ router.get('/users', async (req, res) => {
     }
 });
 
-// Farmer Information
-router.get('/farmer-info', async (req, res) => {
-    try {
-        const { data: landData, error } = await supabase
-            .from('land')
-            .select('*');
-
-        if (error) throw error;
-
-        res.render('admin/farmer-info', { 
-            landData,
-            currentPage: 'farmer-info'
-        });
-    } catch (error) {
-        res.status(500).render('admin/farmer-info', { 
-            landData: [],
-            error: 'Failed to load farmer information',
-            currentPage: 'farmer-info'
-        });
-    }
-});
+// Routes
+router.get('/farmer-info', adminController.getFarmerInfo);
+router.get('/search-land', adminController.searchLand);
+router.delete('/delete-land/:id', adminController.deleteLand);
 
 // Weather Information
 router.get('/weather', async (req, res) => {
-    try {
-        let weather = null;
-        let forecast = null;
-        let error = null;
-
-        if (req.query.location) {
-            const weatherUrl = `https://api.openweathermap.org/data/2.5/weather?q=${req.query.location}&appid=${process.env.WEATHER_API_KEY}&units=metric`;
-            const forecastUrl = `https://api.openweathermap.org/data/2.5/forecast?q=${req.query.location}&appid=${process.env.WEATHER_API_KEY}&units=metric`;
-
-            const [weatherRes, forecastRes] = await Promise.all([
-                fetch(weatherUrl),
-                fetch(forecastUrl)
-            ]);
-
-            if (weatherRes.ok && forecastRes.ok) {
-                weather = await weatherRes.json();
-                forecast = await forecastRes.json();
-            } else {
-                error = 'Failed to fetch weather data';
-            }
-        }
-
-        res.render('admin/weather', { 
-            weather, 
-            forecast, 
-            error,
-            currentPage: 'weather'
-        });
-    } catch (error) {
-        res.status(500).render('admin/weather', { 
-            weather: null,
-            forecast: null,
-            error: 'Failed to load weather information',
-            currentPage: 'weather'
-        });
+  try {
+    const location = req.query.location;
+    if (!location) {
+      return res.render('admin/weather', { weather: null, forecast: null, error: null });
     }
+
+    const apiKey = process.env.OPENWEATHER_API_KEY;
+    
+    // Get coordinates first
+    const geocodeUrl = `http://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(location)}&limit=1&appid=${apiKey}`;
+    const geocodeResponse = await fetch(geocodeUrl);
+    const geocodeData = await geocodeResponse.json();
+
+    if (!geocodeData.length) {
+      throw new Error('Location not found');
+    }
+
+    const { lat, lon } = geocodeData[0];
+
+    // Get current weather
+    const weatherUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${apiKey}`;
+    const weatherResponse = await fetch(weatherUrl);
+    const weatherData = await weatherResponse.json();
+
+    // Get 5-day forecast
+    const forecastUrl = `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&units=metric&appid=${apiKey}`;
+    const forecastResponse = await fetch(forecastUrl);
+    const forecastData = await forecastResponse.json();
+
+    // Add country name to weather data
+    weatherData.country = geocodeData[0].country;
+
+    res.render('admin/weather', {
+      weather: weatherData,
+      forecast: forecastData,
+      error: null
+    });
+
+  } catch (error) {
+    console.error('Weather API Error:', error);
+    res.render('admin/weather', {
+      weather: null,
+      forecast: null,
+      error: 'Failed to fetch weather data. Please try again.'
+    });
+  }
 });
 
 // API Routes for CRUD operations
@@ -485,5 +476,41 @@ router.delete('/vegetables/:id', async (req, res) => {
         res.status(500).json({ error: 'Failed to delete vegetable' });
     }
 });
+
+// Farmer Information route
+router.get('/farmer-info', async (req, res) => {
+    try {
+        const { data: landData, error } = await supabase
+            .from('farmers_land')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            console.error('Supabase query error:', error);
+            throw error;
+        }
+
+        res.render('admin/farmer-info', {
+            landData: landData || [],
+            error: null,
+            query: req.query.landNumber || '',
+            currentPage: 'farmer-info'
+        });
+    } catch (error) {
+        console.error('Error fetching farmer data:', error);
+        res.render('admin/farmer-info', {
+            landData: [],
+            error: 'Failed to fetch farmer data. Please try again.',
+            query: req.query.landNumber || '',
+            currentPage: 'farmer-info'
+        });
+    }
+});
+
+// Search land route
+router.get('/search-land', adminController.searchLand);
+
+// Delete land route
+router.delete('/delete-land/:id', adminController.deleteLand);
 
 module.exports = router; 

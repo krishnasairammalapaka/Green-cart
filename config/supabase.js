@@ -1,10 +1,13 @@
+require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 const { Pool } = require('pg');
-require('dotenv').config();
 
 // Supabase configuration
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_ANON_KEY;
+
+console.log('SUPABASE_URL:', process.env.SUPABASE_URL);
+console.log('SUPABASE_KEY:', process.env.SUPABASE_ANON_KEY);
 
 if (!supabaseUrl || !supabaseKey) {
     throw new Error('Missing Supabase credentials');
@@ -18,16 +21,15 @@ try {
     process.exit(1);
 }
 
-const supabase = createClient(supabaseUrl, supabaseKey, {
-    auth: {
-        autoRefreshToken: true,
-        persistSession: true
-    }
-});
+const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Direct PostgreSQL connection
+// Add a PostgreSQL pool for direct database connections
 const pool = new Pool({
-    connectionString: process.env.POSTGRES_URL,
+    user: process.env.DB_USER,
+    host: process.env.DB_HOST,
+    database: process.env.DB_NAME,
+    password: process.env.DB_PASSWORD,
+    port: process.env.DB_PORT,
     ssl: {
         rejectUnauthorized: false
     }

@@ -104,7 +104,14 @@
 
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <% if (orders && orders.length > 0) { %>
-                    <% orders.forEach(order => { %>
+                    <% 
+                    // Sort orders by created_at in descending order
+                    const sortedOrders = [...orders].sort((a, b) => {
+                        return new Date(b.created_at) - new Date(a.created_at);
+                    });
+                    
+                    sortedOrders.forEach(order => { 
+                    %>
                         <div class="order-card bg-white rounded-lg shadow-md overflow-hidden" 
                              onclick="showOrderDetails('<%= JSON.stringify(order) %>')"
                              data-status="<%= order.status %>">
@@ -129,6 +136,32 @@
                                         <%= order.status.charAt(0).toUpperCase() + order.status.slice(1) %>
                                     </span>
                                 </div>
+
+                                <!-- Add Items Preview Section -->
+                                <div class="mt-4 border-t pt-4">
+                                    <h4 class="text-sm font-medium text-gray-700 mb-2">Items:</h4>
+                                    <div class="space-y-2">
+                                        <% order.items.slice(0, 3).forEach(item => { %>
+                                            <div class="flex items-center justify-between text-sm">
+                                                <div class="flex items-center">
+                                                    <img src="<%= item.vegetables.image_url %>" 
+                                                         alt="<%= item.vegetables.name %>"
+                                                         class="w-8 h-8 object-cover rounded-md mr-2">
+                                                    <span class="text-gray-800"><%= item.vegetables.name %></span>
+                                                </div>
+                                                <div class="text-gray-600">
+                                                    <%= item.quantity %> × ₹<%= item.price.toFixed(2) %>
+                                                </div>
+                                            </div>
+                                        <% }); %>
+                                        <% if (order.items.length > 3) { %>
+                                            <div class="text-sm text-gray-500 italic">
+                                                + <%= order.items.length - 3 %> more items
+                                            </div>
+                                        <% } %>
+                                    </div>
+                                </div>
+
                                 <div class="mt-4 flex justify-between items-center">
                                     <span class="text-sm text-gray-500"><%= order.items.length %> items</span>
                                     <span class="font-bold">₹<%= order.total_amount.toFixed(2) %></span>
@@ -152,6 +185,11 @@
                     </div>
                 <% } %>
             </div>
+
+            <!-- Add this temporarily to debug -->
+            <pre style="display: none;">
+                <%= JSON.stringify(orders, null, 2) %>
+            </pre>
         </div>
     </div>
 

@@ -530,4 +530,16 @@ router.put('/update-profile', async (req, res) => {
     }
 });
 
+// Add this route to handle user logout
+router.get('/logout', (req, res) => {
+    req.session.destroy((err) => {
+        if (err) {
+            console.error('Logout error:', err);
+            return res.redirect('/user/dashboard');
+        }
+        res.clearCookie('connect.sid'); // Clear the session cookie
+        res.redirect('/login'); // or wherever your main login page is
+    });
+});
+
 module.exports = router; 

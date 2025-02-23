@@ -9,6 +9,9 @@ const PDFDocument = require('pdfkit');
 const fs = require('fs');
 const authRoutes = require('./routes/authRoutes');
 const adminRoutes = require('./routes/admin');
+const morgan = require('morgan');
+const testRoutes = require('./routes/test');
+const auth = require('./routes/auth');
 
 const app = express();
 
@@ -19,12 +22,11 @@ app.use(express.urlencoded({ extended: true }));
 
 // Set up session middleware with more secure configuration
 app.use(session({
-    secret: process.env.JWT_SECRET,
+    secret: process.env.JWT_SECRET || 'your-secret-key',
     resave: false,
     saveUninitialized: false,
     cookie: {
-        secure: false, // Set to true in production with HTTPS
-        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
         maxAge: 24 * 60 * 60 * 1000 // 24 hours
     }
 }));
@@ -54,6 +56,23 @@ app.use(async (req, res, next) => {
     }
 });
 
+// Add this after your other middleware
+app.use(async (req, res, next) => {
+    try {
+        // Simple test query
+        const { data, error } = await supabase
+            .from('farmers_land')
+            .select('count');
+            
+        if (error) throw error;
+        next();
+    } catch (err) {
+        console.error('Database middleware error:', err);
+        // Continue anyway, don't block the request
+        next();
+    }
+});
+
 // Add this before your routes
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -76,8 +95,6 @@ app.use('/', indexRouter);  // This should be the first route
 app.use('/auth', authRoutes);
 
 // Other routes
-const { router: authRouter } = require('./routes/auth');
-app.use('/auth', authRouter);  // This mounts all auth routes under /auth
 app.use('/admin', adminRoutes);  // This now handles its own auth
 app.use('/user', require('./routes/user'));
 app.use('/farmer', require('./routes/farmer'));
@@ -104,13 +121,13 @@ app.get('/user/profile', isAuthenticated, async (req, res) => {
     }
 });
 
-// Global error handler
+// Add this near the top of your Express app configuration
+app.use(morgan('dev'));
+
+// Error handling middleware
 app.use((err, req, res, next) => {
     console.error(err.stack);
-    res.status(500).render('error', {
-        message: 'Something broke!',
-        error: process.env.NODE_ENV === 'development' ? err : {}
-    });
+    res.status(500).send('Something broke!');
 });
 
 // Handle 404
@@ -119,6 +136,11 @@ app.use((req, res) => {
         message: 'Page not found',
         error: {}
     });
+});
+
+// Add this route before your other routes
+app.get('/auth/login', (req, res) => {
+    res.render('auth/login', { error: null });
 });
 
 const PORT = process.env.PORT || 3000;
@@ -138,4 +160,6 @@ process.on('uncaughtException', (error) => {
 
 process.on('unhandledRejection', (error) => {
     console.error('Unhandled Rejection:', error);
-}); 
+});
+
+app.use('/test', testRoutes); 
