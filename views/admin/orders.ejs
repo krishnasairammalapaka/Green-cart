@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin - Orders</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDBRvts55sYzQ0hcPcF0qp6ApnwW-hHmYo&libraries=places"></script>
 </head>
 <body class="bg-gray-100">
     <div class="flex min-h-screen">
@@ -190,6 +191,22 @@
                     </div>
                 </div>
 
+                <!-- Delivery Location Section -->
+                <div class="border-b pb-4">
+                    <h4 class="text-lg font-semibold mb-3">Delivery Location</h4>
+                    <div id="map" class="w-full h-[400px] rounded-lg"></div>
+                    <div class="mt-4 grid grid-cols-2 gap-4">
+                        <div>
+                            <p class="text-sm text-gray-600">Estimated Distance:</p>
+                            <p class="font-semibold" id="distance"></p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-600">Estimated Time:</p>
+                            <p class="font-semibold" id="duration"></p>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Actions Section -->
                 <div class="flex justify-end gap-3 mt-6 pt-4 border-t">
                     <button onclick="closeDetailsModal()" 
@@ -206,7 +223,86 @@
     </div>
 
     <script>
+        let map;
+        let directionsService;
+        let directionsRenderer;
+        let driverMarker;
+        let customerMarker;
         let currentOrderId = null;
+
+        function initMap(customerAddress) {
+            // Initialize services
+            directionsService = new google.maps.DirectionsService();
+            directionsRenderer = new google.maps.DirectionsRenderer();
+            
+            // Create map instance
+            map = new google.maps.Map(document.getElementById("map"), {
+                zoom: 12,
+                center: { lat: 20.5937, lng: 78.9629 }, // Default center (India)
+                mapTypeId: google.maps.MapTypeId.ROADMAP
+            });
+
+            directionsRenderer.setMap(map);
+
+            // Get driver's current location
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const driverLocation = {
+                            lat: position.coords.latitude,
+                            lng: position.coords.longitude
+                        };
+
+                        // Geocode customer's address
+                        const geocoder = new google.maps.Geocoder();
+                        geocoder.geocode({ address: customerAddress }, (results, status) => {
+                            if (status === "OK") {
+                                const customerLocation = results[0].geometry.location;
+                                
+                                // Add driver marker
+                                driverMarker = new google.maps.Marker({
+                                    position: driverLocation,
+                                    map: map,
+                                    title: "Driver Location",
+                                    icon: {
+                                        url: "http://maps.google.com/mapfiles/ms/icons/blue-dot.png"
+                                    }
+                                });
+
+                                // Add customer marker
+                                customerMarker = new google.maps.Marker({
+                                    position: customerLocation,
+                                    map: map,
+                                    title: "Delivery Location",
+                                    icon: {
+                                        url: "http://maps.google.com/mapfiles/ms/icons/red-dot.png"
+                                    }
+                                });
+
+                                // Fit bounds to show both markers
+                                const bounds = new google.maps.LatLngBounds();
+                                bounds.extend(driverLocation);
+                                bounds.extend(customerLocation);
+                                map.fitBounds(bounds);
+
+                                // Calculate and display route
+                                calculateRoute(driverLocation, customerLocation);
+
+                                // Start location updates
+                                startLocationUpdates();
+                            } else {
+                                console.error("Geocoding failed:", status);
+                                alert("Could not find the delivery address on the map.");
+                            }
+                        });
+                    },
+                    (error) => {
+                        console.error("Error getting driver location:", error);
+                        alert("Could not get driver's location. Please enable location services.");
+                    }
+                );
+            }
+        }
 
         function updateStatus(orderId) {
             currentOrderId = orderId;
@@ -272,6 +368,9 @@
                     </div>
                 `;
 
+                // Initialize map with customer's address
+                initMap(order.delivery_address);
+
                 // Show the modal
                 document.getElementById('orderDetailsModal').classList.remove('hidden');
             } catch (error) {
@@ -280,8 +379,50 @@
             }
         }
 
+        function calculateRoute(origin, destination) {
+            const request = {
+                origin: origin,
+                destination: destination,
+                travelMode: google.maps.TravelMode.DRIVING
+            };
+
+            directionsService.route(request, (result, status) => {
+                if (status === "OK") {
+                    directionsRenderer.setDirections(result);
+                    
+                    // Display distance and duration
+                    const route = result.routes[0];
+                    document.getElementById("distance").textContent = route.legs[0].distance.text;
+                    document.getElementById("duration").textContent = route.legs[0].duration.text;
+                }
+            });
+        }
+
+        // Real-time location updates
+        let locationUpdateInterval;
+        function startLocationUpdates() {
+            locationUpdateInterval = setInterval(() => {
+                if (navigator.geolocation && driverMarker) {
+                    navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                            const newLocation = {
+                                lat: position.coords.latitude,
+                                lng: position.coords.longitude
+                            };
+                            driverMarker.setPosition(newLocation);
+                            if (customerMarker) {
+                                calculateRoute(newLocation, customerMarker.getPosition());
+                            }
+                        },
+                        (error) => console.error("Error updating location:", error)
+                    );
+                }
+            }, 10000); // Update every 10 seconds
+        }
+
         function closeDetailsModal() {
             document.getElementById('orderDetailsModal').classList.add('hidden');
+            clearInterval(locationUpdateInterval); // Stop location updates when modal is closed
         }
 
         function updateOrderStatus() {

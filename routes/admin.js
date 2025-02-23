@@ -177,131 +177,96 @@ async function debugOrderData() {
 }
 
 // Orders Management
-router.get('/orders', adminAuth, async (req, res) => {
+router.get('/orders', isAdmin, async (req, res) => {
     try {
-        // First fetch orders
         const { data: orders, error: ordersError } = await supabase
             .from('orders')
-            .select('*')
+            .select(`
+                *,
+                users (
+                    name,
+                    email,
+                    phone,
+                    address
+                )
+            `)
             .order('created_at', { ascending: false });
 
-        if (ordersError) {
-            console.error('Orders fetch error:', ordersError);
-            throw ordersError;
-        }
+        if (ordersError) throw ordersError;
 
-        // Get unique user IDs from orders
-        const userIds = [...new Set(orders.map(order => order.user_id))];
+        const processedOrders = orders.map(order => ({
+            _id: order.id,
+            customerName: order.users?.name || order.customer_name || 'Unknown',
+            customerEmail: order.users?.email || order.email || 'N/A',
+            phone: order.users?.phone || order.phone || 'N/A',
+            address: order.users?.address || order.delivery_address || 'N/A',
+            products: order.items || [],
+            totalAmount: order.total_amount,
+            status: order.status,
+            orderDate: order.created_at
+        }));
 
-        // Fetch user details for these orders
-        const { data: users, error: usersError } = await supabase
-            .from('users')
-            .select('*')
-            .in('id', userIds);
-
-        if (usersError) {
-            console.error('Users fetch error:', usersError);
-            throw usersError;
-        }
-
-        // Create a map of user details for quick lookup
-        const userMap = users.reduce((acc, user) => {
-            acc[user.id] = user;
-            return acc;
-        }, {});
-
-        // Process the orders data with user details
-        const processedOrders = orders.map(order => {
-            const user = userMap[order.user_id] || {};
-            return {
-                _id: order.id,
-                customerName: user.name || order.customer_name || 'Unknown',
-                customerEmail: user.email || order.email || 'N/A',
-                products: [{
-                    name: order.item_name || 'Product',
-                    quantity: order.quantity || 1
-                }],
-                totalAmount: order.amount || 0,
-                status: order.status || 'Pending',
-                orderDate: order.created_at,
-                address: user.address || order.address || 'N/A',
-                phone: user.phone_number || order.phone || 'N/A',
-                userId: order.user_id
-            };
-        });
-
-        console.log('Processed orders:', processedOrders);
-
-        res.render('admin/orders', { 
-            orders: processedOrders,
-            currentPage: 'orders'
-        });
-
+        res.render('admin/orders', { orders: processedOrders });
     } catch (error) {
         console.error('Error fetching orders:', error);
-        res.status(500).render('admin/orders', {
-            orders: [],
-            currentPage: 'orders',
-            error: 'Failed to load orders'
-        });
+        res.status(500).send('Server error');
     }
 });
 
 // Update order status
-router.post('/orders/:id/status', async (req, res) => {
+router.post('/orders/:id/status', isAdmin, async (req, res) => {
     try {
-        const { id } = req.params;
-        const { status } = req.body;
-
-        const { error } = await supabase
+        const { data: order, error } = await supabase
             .from('orders')
-            .update({ status })
-            .eq('id', id);
+            .update({ status: req.body.status })
+            .eq('id', req.params.id)
+            .select()
+            .single();
 
         if (error) throw error;
-
-        res.json({ success: true });
+        res.json({ success: true, order });
     } catch (error) {
-        console.error('Update order status error:', error);
+        console.error('Error updating order status:', error);
         res.status(500).json({ error: 'Failed to update order status' });
     }
 });
 
-// Get single order details
-router.get('/orders/:id/details', async (req, res) => {
+// Get order details
+router.get('/orders/:id/details', isAdmin, async (req, res) => {
     try {
-        // Fetch order details
-        const { data: order, error: orderError } = await supabase
+        const { data: order, error } = await supabase
             .from('orders')
-            .select('*')
+            .select(`
+                *,
+                users (
+                    name,
+                    email,
+                    phone,
+                    address
+                )
+            `)
             .eq('id', req.params.id)
             .single();
 
-        if (orderError) throw orderError;
-
-        // Fetch user details if user_id exists
-        let user = {};
-        if (order.user_id) {
-            const { data: userData, error: userError } = await supabase
-                .from('users')
-                .select('*')
-                .eq('id', order.user_id)
-                .single();
-
-            if (!userError && userData) {
-                user = userData;
-            }
+        if (error) throw error;
+        if (!order) {
+            return res.status(404).json({ error: 'Order not found' });
         }
 
-        // Combine order and user data
-        res.json({
-            ...order,
-            customerName: user.name || order.customer_name || 'Unknown',
-            customerEmail: user.email || order.email || 'N/A',
-            phone: user.phone_number || order.phone || 'N/A',
-            address: user.address || order.address || 'N/A'
-        });
+        // Format order data for frontend
+        const formattedOrder = {
+            id: order.id,
+            created_at: order.created_at,
+            status: order.status,
+            total_amount: order.total_amount,
+            customer_name: order.users?.name || order.customer_name || 'Unknown',
+            phone_number: order.users?.phone || order.phone || 'N/A',
+            delivery_address: order.users?.address || order.delivery_address || 'N/A',
+            product_name: order.items?.[0]?.name || 'N/A',
+            quantity: order.items?.[0]?.quantity || 0
+        };
 
+        res.json(formattedOrder);
     } catch (error) {
         console.error('Error fetching order details:', error);
         res.status(500).json({ error: 'Failed to fetch order details' });
@@ -309,9 +274,8 @@ router.get('/orders/:id/details', async (req, res) => {
 });
 
 // Update delivery tracking
-router.post('/orders/:id/tracking', async (req, res) => {
+router.post('/orders/:id/tracking', isAdmin, async (req, res) => {
     try {
-        const { id } = req.params;
         const { delivery_latitude, delivery_longitude, estimated_delivery_time } = req.body;
 
         const { error } = await supabase
@@ -322,13 +286,12 @@ router.post('/orders/:id/tracking', async (req, res) => {
                 estimated_delivery_time,
                 status: 'out_for_delivery'
             })
-            .eq('id', id);
+            .eq('id', req.params.id);
 
         if (error) throw error;
-
         res.json({ success: true });
     } catch (error) {
-        console.error('Update tracking error:', error);
+        console.error('Error updating tracking:', error);
         res.status(500).json({ error: 'Failed to update tracking information' });
     }
 });
